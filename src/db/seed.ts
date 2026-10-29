@@ -1,0 +1,14 @@
+import type { DemoDataset, ExerciseLog, Meal, TrainingPlan, UserProfile } from '../shared/types'
+import { createId, nowIso } from '../shared/utils'
+import { clearMode, repo } from './database'
+
+const base = (mode: 'demo', id: string) => ({ id, mode, schemaVersion: 1 as const, createdAt: nowIso(), updatedAt: nowIso() })
+const foods = [{ name: '米饭', kcal: 116, p: 2.6, f: 0.3, c: 25.9 }, { name: '鸡胸肉', kcal: 133, p: 24.6, f: 3.5, c: 0 }, { name: '西兰花', kcal: 34, p: 2.8, f: 0.4, c: 6.6 }]
+export function buildDemoDataset(): DemoDataset {
+  const profile: UserProfile = { ...base('demo', 'demo_profile'), ageYears: 22, heightCm: 168, weightKg: 66.4, sexForEquation: 'female', goalType: 'fat_loss', exerciseExperience: 'beginner', equipment: 'mixed', timeZone: 'Asia/Shanghai', healthDeclaration: true }
+  const plan: TrainingPlan = { ...base('demo', 'demo_plan_v1'), profileId: profile.id, version: 1, weekStart: '2026-10-19', strategy: 'fat_loss', sessions: Array.from({ length: 7 }, (_, day) => ({ day, label: day === 1 || day === 4 ? '力量基础' : day === 0 || day === 3 ? '轻有氧' : '恢复', exercises: [{ id: createId('ex'), name: day % 2 ? '深蹲' : '快走', muscle: day % 2 ? '下肢' : '心肺', equipment: day % 2 ? '徒手' : '校园', sets: day % 2 ? 3 : 1, reps: day % 2 ? '8–12' : '30 分钟', restSec: 60, note: '保持可控强度，动作不适时停止', status: 'planned' }] })) }
+  const meals: Meal[] = []; const exercises: ExerciseLog[] = []; const bodyWeights: Array<{ date: string; weightKg: number }> = []
+  for (let i = 0; i < 14; i++) { const date = new Date(Date.UTC(2026, 9, 19 + i)).toISOString().slice(0, 10); bodyWeights.push({ date, weightKg: Number((66.4 - i * 0.04 + (i % 3) * 0.08).toFixed(2)) }); if (i % 5 !== 2) meals.push({ ...base('demo', `demo_meal_${i}`), localDate: date, mealType: 'lunch', source: 'manual', items: foods.slice(0, 2).map((f, index) => ({ id: `item_${i}_${index}`, foodName: f.name, massGrams: index ? 120 : 180, nutritionPer100g: { kcal: f.kcal, proteinG: f.p, fatG: f.f, carbsG: f.c, source: 'evofit-curated-cn-v1' }, isUserConfirmed: true })) }); if (i % 3 !== 1) exercises.push({ ...base('demo', `demo_exercise_${i}`), localDate: date, activityCode: 'treadmill_walk', activityName: '跑步机快走', durationMin: 35, massKg: profile.weightKg, speedKmh: 4.5, inclinePercent: 10, intensity: 'moderate', met: 4.3, netEnergyKcal: 120, methodVersion: 'met-compendium-lite-v1', source: 'manual' }) }
+  return { datasetVersion: 'demo-2026-10-v1', isSynthetic: true, mode: 'demo', profile, plan, meals, exercises, bodyWeights }
+}
+export async function resetDemoData() { const data = buildDemoDataset(); await clearMode('demo'); await repo.putProfile(data.profile); await repo.putPlan(data.plan); for (const meal of data.meals) await repo.putMeal(meal); for (const exercise of data.exercises) await repo.putExercise(exercise); return data }

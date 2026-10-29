@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+coverage/
+*.log
+.playwright-mcp/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
