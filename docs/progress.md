@@ -130,3 +130,12 @@
 - 验证：目录与仓储局部单测 14/14；完整单测 11 files / 43 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 回归修复：日历摘要与任务状态重复文案导致 E2E 精确定位冲突，已改为短状态词并重新通过全量门禁。
 - 提交：待本阶段变更审阅后提交，下一阶段进入 Agent 工具注册表、聊天控制器和教练 UI。
+
+## 2026-10-30 · 校赛完整版本阶段 5（Task 9–11）
+
+- 状态：DONE；完成统一 Agent 工具注册表、多轮聊天控制器和全局 AI 教练抽屉。
+- 工具：注册画像、餐食、运动、计划、食物营养、活动 MET、日平衡、趋势、身体指标和计划提案工具；所有调用校验 mode/profile/days，提案仅写入 `awaiting_approval`。
+- 聊天：会话/消息/工具消息持久化，最近 12 条上下文、最多 6 轮、每轮最多 6 个工具调用；provider 不可用时回到本地解释路径，模型异常保存错误消息。
+- UI：App 静态抽屉已替换为 `ChatCoach`，包含快捷问题、会话列表、消息区、同意开关、停止按钮、ToolTrace 摘要和提案审批卡片；批准复用原有事务。
+- 验证：Agent/chat 局部单测 5/5；完整单测 13 files / 48 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进入身体指标、固定窗口周报和计划历史。
