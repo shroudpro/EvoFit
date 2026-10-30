@@ -112,3 +112,12 @@
 - 设置页：支持保存配置、连接测试、脱敏状态和清除本地 key；导出 JSON 只保留 provider summary，不回显 key。
 - 验证：`npm test -- --run tests/unit/modelAdapter.test.ts tests/unit/aiProxy.test.ts` → 12/12；完整单测 → 8 files / 35 tests；`npm run typecheck` → PASS；`npm run build` → PASS（保留既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进入画像安全、目标和营养计算。
+
+## 2026-10-30 · 校赛完整版本阶段 3（Task 5–6）
+
+- 状态：DONE；完成五步画像字段、安全筛选、目标计划和营养/能量范围计算。
+- 画像：新增目标体重、活动水平、每日可用时间、风险项、过敏与餐食偏好；画像提交会保留安全原因，风险用户不生成自动热量/蛋白质目标但仍可手工记录。
+- 安全：`evaluateProfileSafety` 拦截未成年、异常输入、极端目标体重和医疗/持续不适风险。
+- 目标：`calculateGoalPlan` 输出方法版本、假设和限制；`calculateProteinRange` 与 `calculateEstimatedBalance` 区分缺口、盈余和未知证据；今日页展示估计范围。
+- 验证：安全/目标局部单测 6/6；完整单测 10 files / 41 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进入食物目录、动作目录和训练日历。
