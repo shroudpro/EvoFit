@@ -7,7 +7,7 @@ export interface ProviderRequest { purpose: ProviderPurpose; input: unknown; res
 export type ProviderResponseStatus = 'connected' | 'unconfigured' | 'failed' | 'rate_limited' | 'timeout'
 export interface ProviderResponse { status: ProviderResponseStatus; payload?: unknown; message: string; errorCode?: string; httpStatus?: number }
 
-const REQUEST_TIMEOUT_MS = 15_000
+const REQUEST_TIMEOUT_MS = 45_000
 
 export function normalizeFunctionEndpoint(endpoint: string) {
   try {
@@ -53,7 +53,10 @@ export async function requestProvider(request: ProviderRequest): Promise<Provide
   try {
     const response = await fetch(direct ? responsesEndpoint(config.baseUrl) : functionEndpoint(), { method: 'POST', headers: headersFor(config, direct), body: JSON.stringify(body), signal })
     const payload = await response.json().catch(() => undefined) as { result?: unknown; error?: string; message?: string }
-    if (!response.ok) return { status: response.status === 429 ? 'rate_limited' : 'failed', errorCode: response.status === 429 ? 'RATE_LIMITED' : payload?.error === 'INVALID_JSON' ? 'INVALID_SCHEMA' : payload?.error ?? 'MODEL_UNAVAILABLE', httpStatus: response.status, message: payload?.message ?? messageFor(response.status, payload?.error) }
+    if (!response.ok) {
+      const timedOut = response.status === 504 || payload?.error === 'UPSTREAM_TIMEOUT'
+      return { status: timedOut ? 'timeout' : response.status === 429 ? 'rate_limited' : 'failed', errorCode: timedOut ? 'TIMEOUT' : response.status === 429 ? 'RATE_LIMITED' : payload?.error === 'INVALID_JSON' ? 'INVALID_SCHEMA' : payload?.error ?? 'MODEL_UNAVAILABLE', httpStatus: response.status, message: payload?.message ?? messageFor(response.status, payload?.error) }
+    }
     return { status: 'connected', payload: direct ? payload : payload?.result, message: '真实模型已返回结果。', httpStatus: response.status }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return { status: 'timeout', errorCode: 'TIMEOUT', message: '模型请求超时，已回到手工路径。' }

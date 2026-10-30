@@ -164,7 +164,7 @@
 - E2E：`scripts/e2e-smoke.mjs` 新增身体指标、AI 教练入口、时间线和完整 P0 场景；本地 6 场景通过，真实模式额外餐图/运动/Agent 3 场景通过。
 - 真实 provider：`npm run smoke:provider` 4/4 HTTP 200，平均延迟 5650 ms、平均 total tokens 4436.5；单次探针，不代表准确率、SLA 或费用。
 - 回归修复：统一 client 的空 schema 曾覆盖 Function 固定 schema，导致真实餐图结构化结果超时；Function 现对餐图/运动/周报始终使用服务端 schema，chat 才接受受控 schema。
-- 文档：新增 `docs/school-competition-complete-readiness.md`；更新 architecture、acceptance、requirements-trace、ai-evaluation、README 和 `HANDOFF_R3.md`。
+- 文档：新增 `docs/school-competition-complete-readiness.md`；更新 architecture、acceptance、requirements-trace、ai-evaluation、README 和当时的 `HANDOFF_R3.md`。
 - 最终本地证据：`npm run typecheck` PASS；完整单测 15 files / 52 tests PASS；`npm run build` PASS（既有 bundle warning）；本地与真实 provider E2E PASS。
 
 ## 2026-10-30 · 个性化 AI 教练重构
@@ -184,3 +184,13 @@
 
 - 补充诊断：Windows `localhost` 解析同时包含 `::1` 和 `127.0.0.1`，而本地 Function 监听 IPv4；前端现自动将本地 Function URL 规范化为 `127.0.0.1`。
 - 最新验证：provider 配置单测 6/6；完整单测 15 files / 58 tests；typecheck、build、E2E 全部 PASS。
+
+## 2026-10-30 · 真实模型测试问题修复
+
+- 状态：DONE；根据真实 `.env` 浏览器测试结果修复模型超时、错误映射和计划提案安全边界。
+- 超时：浏览器 provider client 默认超时从 15 秒调整为 45 秒；Function 支持 `MODEL_UPSTREAM_TIMEOUT_MS`，默认 45 秒，以覆盖真实餐图和 Agent 工具请求延迟。
+- 错误：Function 返回 504 或 `UPSTREAM_TIMEOUT` 时，客户端统一映射为 `TIMEOUT`，继续保留手工/本地降级路径。
+- 提案安全：`create_plan_proposal` 的 JSON Schema 和 Zod 校验只允许 `training.sessions[1].exercises[0].sets`，且只允许减少当前组数；空提案、非法字段和增加训练量均拒绝写入。
+- 审批安全：`applyApprovedProposal` 增加相同的可应用变更检查，禁止空变更或无效变更生成新计划版本。
+- 回归测试：新增 provider 504 映射、非法提案字段、增加训练量和空提案审批测试。
+- 验证：相关测试 12/12；真实模型 E2E 9/9 场景通过（6 个本地 + 3 个真实模型场景）；最新完整单测 16 files / 62 tests、typecheck 和 build 均通过。

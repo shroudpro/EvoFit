@@ -53,7 +53,7 @@ npm run dev:function
 | 命令 | 结果 |
 |---|---|
 | `npm run typecheck` | 通过 |
-| `npm test -- --run` | 52/52 tests 通过 |
+| `npm test -- --run` | 62/62 tests 通过 |
 | `npm run build` | 通过；仅有单 bundle 超过 500 kB 的警告 |
 | `npm run test:e2e` | 6 个完整 P0 场景通过 |
 | `$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e` | 6 个本地场景 + 3 个真实模型场景通过 |
@@ -71,7 +71,7 @@ npm run dev:function
 - 运动只提取参数，MET 和净消耗由本地确定性代码计算。
 - 周报模型只能调用固定的只读工具并生成待审批提案，不能直接应用计划。
 - 缺少同意、未配置、超时、429、非法 JSON 或非法结构化结果都会回到手工/本地规则路径。
-- Function 限制请求体 6 MB，图片客户端限制 4 MB，上游超时 15 秒，模型输出最多 800 tokens，并使用 provider allowlist。
+- Function 限制请求体 6 MB，图片客户端限制 4 MB，上游超时默认 45 秒（可由 `MODEL_UPSTREAM_TIMEOUT_MS` 调整），模型输出最多 800 tokens，并使用 provider allowlist。
 - 受控预览设置 `PREVIEW_ACCESS_TOKEN` 后，Function 要求 Bearer 访问码；设置页只在当前浏览器会话保存访问码。
 - Function 默认按 Netlify 客户端 IP 限制为每 5 分钟 20 次请求，可通过 `MODEL_RATE_LIMIT_MAX` 和 `MODEL_RATE_LIMIT_WINDOW_MS` 收紧。
 
@@ -93,6 +93,7 @@ npm run dev:function
 - `PREVIEW_ACCESS_TOKEN`
 - `MODEL_RATE_LIMIT_MAX`
 - `MODEL_RATE_LIMIT_WINDOW_MS`
+- `MODEL_UPSTREAM_TIMEOUT_MS`
 
 受控预览必须配置 `PREVIEW_ACCESS_TOKEN`，并启用 Netlify 站点访问保护或等效 SSO。不要把服务器变量改成 `VITE_*` 变量。
 
@@ -125,8 +126,9 @@ npm run dev:function
 ## 文档
 
 - [R3 发布准备审计](docs/release-readiness.md)
-- [R3 交接与开发冻结](HANDOFF_R3.md)
+- [最新交接与开发冻结](HANDOFF-LATEST.MD)
 - [部署与回滚](docs/deployment.md)
+- [阿里云 nip.io 部署与验收](docs/alicloud-nipio-deployment.md)
 - [验收矩阵](docs/acceptance.md)
 - [需求追踪](docs/requirements-trace.md)
 - [架构说明](docs/architecture.md)

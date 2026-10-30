@@ -57,5 +57,5 @@
 ## ADR-009 · 模型请求固定超时并显式降级
 
 - 背景：浏览器和 Netlify Function 请求可能无限等待，用户无法判断是否应回到手工路径。
-- 决定：浏览器适配器和 Function 上游请求均使用 15 秒 AbortController 超时，分别返回“模型请求超时”/`UPSTREAM_TIMEOUT`，不重试、不写入业务数据。
+- 决定：浏览器适配器和 Function 上游请求默认使用 45 秒 AbortController 超时，支持通过 `MODEL_UPSTREAM_TIMEOUT_MS` 调整；分别返回“模型请求超时”/`UPSTREAM_TIMEOUT`，不重试、不写入业务数据。延长默认值是为了覆盖真实餐图和工具调用的实测延迟。
 - 影响：慢 provider 会进入本地降级，但不会通过延迟掩盖数据状态问题。

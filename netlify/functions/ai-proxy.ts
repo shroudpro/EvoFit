@@ -16,7 +16,14 @@ const responseSchemas: Record<Purpose, object> = {
   ,chat: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'], additionalProperties: false }
 }
 
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs = 15_000) {
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 45_000
+
+function upstreamTimeoutMs() {
+  const configured = Number(process.env.MODEL_UPSTREAM_TIMEOUT_MS)
+  return Number.isFinite(configured) && configured >= 1_000 ? configured : DEFAULT_UPSTREAM_TIMEOUT_MS
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs = upstreamTimeoutMs()) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try { return await fetch(input, { ...init, signal: controller.signal }) } finally { clearTimeout(timer) }

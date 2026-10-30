@@ -29,7 +29,7 @@
 - **密钥边界 PASS（本地）**：源码、`dist` 和脚本脱敏扫描未发现 API key；`.env` 被 Git 忽略，Function 只读取服务器变量。
 - **代理访问控制 PASS（代码）**：设置 `PREVIEW_ACCESS_TOKEN` 后，Function 要求 `Authorization: Bearer`；浏览器 `consentGranted` 只是数据同意，不再被当作身份认证。
 - **服务端限流 PASS（代码）**：按 Netlify `x-nf-client-connection-ip` 做窗口限流，默认 20 次/5 分钟，可由 `MODEL_RATE_LIMIT_MAX`、`MODEL_RATE_LIMIT_WINDOW_MS` 收紧；超限返回 429 与 `Retry-After`。这是无状态 Function 实例内的成本护栏，持久化配额仍需部署后配置/核验。
-- **请求与模型安全 PASS**：请求体上限 6 MB、客户端图片上限 4 MB、上游 15 秒超时、provider URL 精确 allowlist、固定 purpose/JSON schema、最大输出 800 tokens。
+- **请求与模型安全 PASS**：请求体上限 6 MB、客户端图片上限 4 MB、上游默认 45 秒超时（支持 `MODEL_UPSTREAM_TIMEOUT_MS`）、provider URL 精确 allowlist、固定 purpose/JSON schema、最大输出 800 tokens。
 - **降级 PASS**：缺少同意、未配置、429、超时、非法 JSON 或非法结构化结果均回到手工/本地规则路径；模型不能直接写计划。
 - **隐私边界 PASS（实现）**：模型请求只发送用户明确同意的摘要、运动文本或图片；营养与能耗由本地确定性代码计算；健康数据默认留在 IndexedDB。
 - **数据恢复 PASS（本地）**：Dexie v1→v2 迁移、备份 schema、mode 检查、冲突保留和事务合并均有测试；未删除真实数据。

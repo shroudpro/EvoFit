@@ -82,7 +82,9 @@ export async function applyApprovedProposal(mode: Mode, proposalId: string, prof
     if (proposal.profileId !== profileId) throw new Error('PROFILE_SCOPE_MISMATCH')
     const current = await repo.getLatestPlan(mode, profileId)
     if (!current || current.version !== proposal.basePlanVersion) throw new Error('PLAN_VERSION_CONFLICT')
-    const allowedChanges = proposal.changes.filter((change) => change.field === 'training.sessions[1].exercises[0].sets' && typeof change.after === 'number' && Number.isInteger(change.after) && change.after >= 1 && change.after <= 10)
+    const currentSets = current.sessions[1]?.exercises[0]?.sets
+    const allowedChanges = proposal.changes.filter((change) => change.field === 'training.sessions[1].exercises[0].sets' && typeof change.after === 'number' && Number.isInteger(change.after) && change.after >= 1 && change.after < (currentSets ?? 1))
+    if (allowedChanges.length === 0) throw new Error('UNSAFE_PROPOSAL_CHANGE')
     const nextVersion = current.version + 1; const timestamp = new Date().toISOString()
     const next: TrainingPlan = { ...current, id: `${current.id}_v${nextVersion}`, version: nextVersion, updatedAt: timestamp, sessions: current.sessions.map((session, sessionIndex) => ({ ...session, exercises: session.exercises.map((exercise, exerciseIndex) => { const change = sessionIndex === 1 && exerciseIndex === 0 ? allowedChanges[allowedChanges.length - 1] : undefined; return change ? { ...exercise, sets: Number(change.after) } : exercise }) })) }
     const changed = { ...proposal, status: 'applied' as const, approvedAt: timestamp, resultPlanVersion: nextVersion, updatedAt: timestamp }
