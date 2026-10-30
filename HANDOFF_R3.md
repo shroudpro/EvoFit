@@ -14,6 +14,7 @@
 - Agent 与聊天：`agentTools` 统一 mode/profile 校验，`chatAgent` 保存最近 12 条消息、最多 6 轮工具循环；`ChatCoach` 有会话、快捷问题、ToolTrace、停止、错误和提案审批卡片。
 - 周报与历史：固定最近 14 天窗口、身体指标趋势、proposal 证据、审批时间/结果版本、历史计划恢复为新版本。
 - 今日/设置：今日时间线、目标摘要、当前 mode 删除、provider 隐私说明、备份预览/冲突合并、离线与错误降级。
+- Botanical Garden 视觉重构：统一 Fern Green、Marigold、Terracotta、Cream 主题变量与字体回退；重做卡片、表单、按钮、状态、时间线和 AI 样式；桌面侧栏改为深绿色编辑感布局，移动端新增底部导航，AI 抽屉在移动端改为底部弹层；业务逻辑、路由、数据库和 AI 权限流程保持不变。
 - 文档：`docs/progress.md` 按阶段记录；新增 `docs/school-competition-complete-readiness.md`、需求追踪和验收证据。
 
 ## 验证证据
@@ -22,6 +23,8 @@
 - `npm test -- --run`：PASS（15 files / 52 tests）。
 - `npm run build`：PASS（仅既有单 bundle >500 kB warning）。
 - `npm run test:e2e`：PASS（6 个完整本地 P0 场景）。
+- 浏览器视觉验收：PASS（桌面 onboarding/今日页、375px 今日页、移动底部导航、AI 底部弹层）。
+- CSS 变量完整性检查：PASS（主题样式未发现未定义 `var(--...)` 引用）。
 - `$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e`：PASS（6 个本地 + 3 个真实模型场景）。
 - `npm run smoke:provider`：PASS（4/4 HTTP 200；本次平均 5650 ms / 4436.5 tokens）。
 
