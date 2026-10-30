@@ -157,3 +157,12 @@
 - 错误边界：新增 `EvoFitError` 与稳定错误码；provider 处理离线、限流、超时、鉴权、非法结构化结果，AI 失败不阻塞手工路径。
 - 验证：局部 14/14；完整单测 15 files / 52 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进行完整 P0 E2E、文档矩阵和 handoff 更新。
+
+## 2026-10-30 · 校赛完整版本阶段 8（Task 17–18）
+
+- 状态：DONE；完成完整 P0 回归脚本、真实 provider 回归、需求追踪和最终交接更新。
+- E2E：`scripts/e2e-smoke.mjs` 新增身体指标、AI 教练入口、时间线和完整 P0 场景；本地 6 场景通过，真实模式额外餐图/运动/Agent 3 场景通过。
+- 真实 provider：`npm run smoke:provider` 4/4 HTTP 200，平均延迟 5650 ms、平均 total tokens 4436.5；单次探针，不代表准确率、SLA 或费用。
+- 回归修复：统一 client 的空 schema 曾覆盖 Function 固定 schema，导致真实餐图结构化结果超时；Function 现对餐图/运动/周报始终使用服务端 schema，chat 才接受受控 schema。
+- 文档：新增 `docs/school-competition-complete-readiness.md`；更新 architecture、acceptance、requirements-trace、ai-evaluation、README 和 `HANDOFF_R3.md`。
+- 最终本地证据：`npm run typecheck` PASS；完整单测 15 files / 52 tests PASS；`npm run build` PASS（既有 bundle warning）；本地与真实 provider E2E PASS。

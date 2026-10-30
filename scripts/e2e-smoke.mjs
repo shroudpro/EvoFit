@@ -84,7 +84,17 @@ try {
     const rejectButton = page.getByRole('button', { name: /暂不调整/ })
     if (await rejectButton.count()) { await rejectButton.click(); await page.getByText('已暂不调整，当前计划保持不变。').waitFor({ state: 'visible', timeout: 10_000 }) }
   }
-  const scenarios = ['onboarding-to-today', 'manual-meal-refresh-persistence', 'model-consent-degradation', 'training-task-persistence', 'backup-import-preview']
+  await page.getByRole('link', { name: '成长' }).click()
+  await page.getByText('身体指标').waitFor({ state: 'visible' })
+  await page.locator('input[type=number]').first().fill('65')
+  await page.getByRole('button', { name: '保存今天指标' }).click()
+  await page.getByText(/身体指标已保存/).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'AI 教练', exact: true }).click()
+  await page.getByPlaceholder('例如：查昨天蛋白质').waitFor({ state: 'visible' })
+  await page.getByLabel('关闭 AI 教练').click()
+  await page.getByRole('link', { name: '今日' }).click()
+  await page.getByText('今日时间线').waitFor({ state: 'visible' })
+  const scenarios = ['complete-p0-profile-goals-food-training-bodymetrics-chat-timeline', 'onboarding-to-today', 'manual-meal-refresh-persistence', 'model-consent-degradation', 'training-task-persistence', 'backup-import-preview']
   if (process.env.EVOFIT_REAL_MODEL_E2E === '1') scenarios.push('real-model-meal-loop', 'real-model-exercise-loop', 'real-model-agent-tools-and-rejection')
   console.log(JSON.stringify({ status: 'passed', scenarios, baseUrl }, null, 2))
 } finally {

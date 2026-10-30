@@ -28,3 +28,16 @@
 | R2.4-01 | 部分通过 | `npm run build`、Function 类型检查和源码/dist 脱敏检查可做；未获 Netlify 权限，公网鉴权/限流/深链尚未验证 |
 
 `TODO`、`待环境验证` 与 `通过` 严格区分，不以文字描述替代命令证据。
+## 2026-10-30 校赛完整版本复核
+
+| P0 | 状态 | 代码/证据 |
+|---|---|---|
+| 画像、安全、目标 | VERIFIED | `src/domain/safety.ts`、`src/domain/goals.ts`、`tests/unit/safety.test.ts`、`tests/unit/goals.test.ts` |
+| provider 配置与脱敏 | VERIFIED | `src/shared/providerConfig.ts`、`src/api/providerClient.ts`、`tests/unit/providerConfig.test.ts` |
+| 食物/运动目录与记录 | VERIFIED | `src/db/catalog.ts`、Nutrition/Training 页面、catalog 单测 |
+| AI 教练与审批边界 | VERIFIED | agentTools/chatAgent/ChatCoach、真实模型 E2E |
+| 身体趋势与计划历史 | VERIFIED | BodyMetrics、固定 14 天窗口、approval 单测 |
+| 备份、删除、离线降级 | VERIFIED | repository/backup/errors 单测和 E2E |
+| Netlify、手机、账单 | BLOCKED | 外部条件未提供，不能由本地命令代替 |
+
+验证命令：`npm run typecheck`、`npm test -- --run`（15 files / 52 tests）、`npm run build`、`npm run test:e2e`、`$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e`。

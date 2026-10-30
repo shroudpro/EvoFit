@@ -74,7 +74,8 @@ export const handler = async (event: FunctionEvent) => {
   if (!/^https:\/\/(api\.openai\.com|api\.sudocode\.chat|trusted-provider\.example)\/v1$/.test(baseUrl)) return respond(400, { error: 'PROVIDER_NOT_ALLOWED' })
   try {
     const tools = body.purpose === 'weekly_review' ? WEEKLY_REVIEW_TOOLS : body.tools
-    const requestBody = { model: process.env.MODEL_ID ?? process.env.OPENAI_MODEL ?? 'gpt-6-luna', input: body.input, tools, tool_choice: tools ? 'auto' : undefined, text: { format: { type: 'json_schema', name: body.purpose, strict: true, schema: body.responseSchema ?? responseSchemas[body.purpose] } }, max_output_tokens: 800 }
+    const schema = body.purpose === 'chat' ? (body.responseSchema ?? responseSchemas.chat) : responseSchemas[body.purpose]
+    const requestBody = { model: process.env.MODEL_ID ?? process.env.OPENAI_MODEL ?? 'gpt-6-luna', input: body.input, tools, tool_choice: tools ? 'auto' : undefined, text: { format: { type: 'json_schema', name: body.purpose, strict: true, schema } }, max_output_tokens: 800 }
     const response = await fetchWithTimeout(`${baseUrl}/responses`, { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) })
     if (!response.ok) return respond(response.status === 429 ? 429 : 502, { error: response.status === 429 ? 'RATE_LIMITED' : 'UPSTREAM_ERROR', requestId: body.requestId })
     const payload = await response.json() as unknown

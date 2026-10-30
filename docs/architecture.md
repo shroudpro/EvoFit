@@ -33,3 +33,8 @@
 - 备份结构由 Zod 严格 schema 校验，导入前检查来源、版本和所有实体的 mode；预览阶段不写库，确认后以 Dexie 事务合并，ID 冲突保留本地记录。
 - 训练任务完成/跳过状态、完成时间和跳过时间写入当前计划记录，周报的训练完成率由本地确定性统计计算。
 - 模型请求有 15 秒超时；非法 JSON、provider 错误、未同意和超时均只产生降级状态，不直接写入计划或健康记录。
+## 校赛完整版本实现（2026-10-30）
+
+当前实现继续采用 React + Vite + TypeScript + Dexie + Zod。Dexie v3 增加 settings、goals、bodyMetrics、conversations、messages、foods 和 exerciseCatalog；迁移只补 profile 的安全默认值，不虚构指标。provider client 按 browser direct / function proxy 统一超时、schema 和错误状态，浏览器 key 不进入备份；Function 对餐图、运动和周报使用服务端固定 schema。
+
+Agent 通过 `agentTools` 注册表执行 mode/profile 作用域校验，`chatAgent` 只保存最近 12 条上下文并最多执行 6 轮工具调用。模型只能读取授权数据或创建 `awaiting_approval` proposal；有效计划写入仍由 `applyApprovedProposal` / `restorePlanVersion` 本地事务完成。ChatCoach、BodyMetrics 和今日时间线均从当前 mode 仓储读取。

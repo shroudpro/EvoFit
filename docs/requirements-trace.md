@@ -26,3 +26,14 @@
 | Netlify 上线准备 | `netlify.toml`, `docs/deployment.md` | 本地 build/Function 类型检查 | 部分 VERIFIED；公网权限阻塞 |
 
 状态只在真实命令或人工验收完成后更新为 VERIFIED/DONE。
+## 校赛完整版本追踪（2026-10-30）
+
+| 需求 | 状态 | 实现证据 | 验证 |
+|---|---|---|---|
+| 用户配置 provider URL/key/model | VERIFIED | `providerConfig.ts`、`Settings.tsx` | provider 单测、E2E |
+| 全局 AI 教练多轮工具调用 | VERIFIED | `agentTools.ts`、`chatAgent.ts`、`ChatCoach.tsx` | Agent/chat 单测、真实 E2E |
+| 画像、安全、目标和蛋白质 | VERIFIED | `safety.ts`、`goals.ts`、Onboarding/Today | safety/goals 单测 |
+| 食物搜索、动作目录、训练改期 | VERIFIED | `catalog.ts`、Nutrition/Training | catalog 单测、E2E |
+| 身体指标 14 天趋势 | VERIFIED | `BodyMetrics.tsx`、`bodyMetrics.ts` | bodyMetrics 单测、E2E |
+| 提案历史、恢复和 mode 隔离 | VERIFIED | database 事务、Progress/Settings | approval/repository/backup 单测 |
+| 部署门禁与真机 | BLOCKED | Netlify/设备/账单外部条件 | 待负责人提供证据 |

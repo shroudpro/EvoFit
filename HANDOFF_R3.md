@@ -1,58 +1,43 @@
-# EvoFit R3 交接与开发冻结
+# EvoFit 校赛完整版本交接
 
 日期：2026-10-30  
-状态：**BLOCKED BY EXTERNAL DEPENDENCY（被外部条件阻塞）**
+状态：**LOCAL COMPLETE / EXTERNAL DEPENDENCY BLOCKED**
 
-R3 已完成发布前本地审计、阻断性代理安全修复和回归验证，但尚未满足“立即进入受控预览部署”的最终门禁。当前没有执行 Netlify 部署或公开域名操作，等待负责人提供外部验证条件后再继续。
+本轮已按 `docs/superpowers/plans/2026-10-30-evofit-school-competition-complete.md` 完成本地校赛完整版本主链路。项目继续使用 React + Vite + TypeScript + Dexie + Zod；所有有效计划写入仍由本地审批事务完成，模型不能直接写入计划或健康记录。
 
-## 本轮完成
+## 本轮已完成
 
-- Function 增加可选 `PREVIEW_ACCESS_TOKEN` 服务端访问认证；前端设置页以会话级访问码发送 Bearer 令牌，令牌不进入构建产物、备份或模型输入。
-- Function 增加按 `x-nf-client-connection-ip` 的服务端窗口限流，默认 20 次/5 分钟，支持 `MODEL_RATE_LIMIT_MAX` 与 `MODEL_RATE_LIMIT_WINDOW_MS`。
-- CORS 预检允许 `Authorization`；6 MB 请求上限、provider allowlist、15 秒上游超时、固定 purpose/schema 和 800 token 输出限制继续生效。
-- 新增访问认证/限流单测；更新 `.env.example`、README 和 `docs/deployment.md`。
-- 生成 `docs/release-readiness.md`，记录 13 项核心业务证据、A–I 门禁、风险和部署后待验收项。
+- v3 数据契约和迁移：provider 配置、完整画像、目标、身体指标、食物/动作目录、会话/消息表；旧 profile 使用安全默认值。
+- provider 能力：浏览器直连与受控 Function 统一 client、15 秒超时、HTTPS/localhost URL 校验、错误状态、脱敏摘要；API key 不进入备份、日志、测试或构建产物。
+- 画像与目标：五步画像字段、安全风险拦截、目标体重、活动水平、可用时间、蛋白质区间和估计缺口/盈余。
+- 饮食与训练：30 条食物目录、21 个动作目录、关键词搜索、训练七日日历、完成/跳过/改期/反馈。
+- Agent 与聊天：`agentTools` 统一 mode/profile 校验，`chatAgent` 保存最近 12 条消息、最多 6 轮工具循环；`ChatCoach` 有会话、快捷问题、ToolTrace、停止、错误和提案审批卡片。
+- 周报与历史：固定最近 14 天窗口、身体指标趋势、proposal 证据、审批时间/结果版本、历史计划恢复为新版本。
+- 今日/设置：今日时间线、目标摘要、当前 mode 删除、provider 隐私说明、备份预览/冲突合并、离线与错误降级。
+- 文档：`docs/progress.md` 按阶段记录；新增 `docs/school-competition-complete-readiness.md`、需求追踪和验收证据。
 
-## 本轮实际命令
+## 验证证据
 
-```text
-npm run typecheck                         PASS
-npm test -- --run                        PASS（7 files / 30 tests）
-npm run build                             PASS（bundle >500 kB warning）
-npm run test:e2e                          PASS（5 场景）
-$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e
-                                           PASS（5 + 3 个真实模型场景）
-npx tsc --noEmit --ignoreConfig netlify/functions/ai-proxy.ts --target ES2022 --module NodeNext --moduleResolution NodeNext --skipLibCheck --types node
-                                           PASS
-npm run smoke:provider                    PASS（4/4 HTTP 200，单次探针）
-```
+- `npm run typecheck`：PASS。
+- `npm test -- --run`：PASS（15 files / 52 tests）。
+- `npm run build`：PASS（仅既有单 bundle >500 kB warning）。
+- `npm run test:e2e`：PASS（6 个完整本地 P0 场景）。
+- `$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e`：PASS（6 个本地 + 3 个真实模型场景）。
+- `npm run smoke:provider`：PASS（4/4 HTTP 200；本次平均 5650 ms / 4436.5 tokens）。
 
-桌面 1440×900 与移动浏览器模拟 375×812 均无水平溢出；真实手机尚未验收，不能用模拟结果替代。
+真实 provider 结果是单次能力探针和受控去敏 E2E，不代表识别准确率、SLA、长期稳定性或费用；费用仍需账单证据。真实 key 只存在本机 `.env`/设置，不得复制到文档、测试、截图或聊天。
 
-## 环境变量名称
+## 仍阻塞的外部门禁
 
-服务器 Function：`MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_ID`、`APP_ORIGIN`、`PREVIEW_ACCESS_TOKEN`、`MODEL_RATE_LIMIT_MAX`、`MODEL_RATE_LIMIT_WINDOW_MS`。  
-浏览器安全配置：`VITE_API_BASE_URL`、`VITE_APP_MODE`。  
-实际密钥不得写入仓库、`VITE_*` 变量、文档或聊天。
+- Netlify 团队/站点权限、真实域名 CORS、访问保护、持久化限流、账单配额和深链刷新。
+- 真实 iOS/Android 设备验收；浏览器 375×812 模拟不能替代真机。
+- provider 账单或官方单价证据。
 
-## 推荐的安全版本快照
+在这些条件完成前，不执行公网部署、不开放无保护代理、不把本地 smoke 结果写成线上通过。部署前先保留当前 Git 提交和 JSON 备份；异常时回滚站点/Function 或 Git 提交，不手工删除 IndexedDB。
 
-当前 `master` 工作区包含 R1/R2 以及本轮 R3 改动，均未提交；没有执行 reset、清库、覆盖 `.env` 或删除 IndexedDB。负责人应先审阅 `git status` 与 `docs/release-readiness.md`，再将整个工作区创建为一个可回滚的本地提交/标签，保留当前 demo dataset version 和上一份可复现构建。
+## 接手入口
 
-## 受控预览步骤（仅待授权后执行）
-
-1. 创建上述安全版本快照。
-2. 在 Netlify 绑定仓库；沿用 `netlify.toml` 的 `npm run build`、`dist` 和 Function 目录。
-3. 只在 Netlify 环境变量中配置服务器变量，并设置不可公开的 `PREVIEW_ACCESS_TOKEN`。
-4. 开启站点访问保护/等效 SSO，不设置公开域名，不开放无令牌 Function。
-5. 发布受控预览后按 `docs/release-readiness.md` 的部署后门禁逐项验收。
-6. 若异常，回滚到上一份站点/Function 版本；先导出 IndexedDB 备份，不手工删除真实数据。
-
-## 仍阻塞的验收
-
-- Netlify 权限、真实域名 CORS、线上访问码、持久化限流和账单配额。
-- 真实预览深链刷新。
-- 真实 iOS/Android 设备验收。
-- provider 账单/费用证据。
-
-在上述事项完成并复核 A–I 前，保持开发冻结，不新增功能、不做 UI 美化、不自动部署。
+1. 先看 [校赛完整版本准备报告](docs/school-competition-complete-readiness.md)、[开发进度](docs/progress.md) 和 `git status`。
+2. 本地回归使用 `npm ci`、`npm run typecheck`、`npm test -- --run`、`npm run build`、`npm run test:e2e`。
+3. 需要真实模型时使用 `$env:EVOFIT_REAL_MODEL_E2E='1'; npm run test:e2e`；不得输出或提交 key。
+4. 只有外部门禁证据齐全后，才继续受控预览部署和发布审计。
