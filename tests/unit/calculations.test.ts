@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { calculateFoodNutrients, convertKjToKcal, estimateExerciseEnergy, estimateRee, sumMealNutrients } from '../../src/domain/calculation'
+import { calculateFoodNutrients, calculateTrainingCompletion, convertKjToKcal, estimateExerciseEnergy, estimateRee, sumMealNutrients } from '../../src/domain/calculation'
+import type { TrainingPlan } from '../../src/shared/types'
 
 describe('确定性计算', () => {
+  it('calculates training completion from persisted task statuses', () => { const plan = { sessions: [{ exercises: [{ status: 'completed' }, { status: 'skipped' }, { status: 'planned' }] }] } as unknown as Pick<TrainingPlan, 'sessions'>; expect(calculateTrainingCompletion(plan)).toBe(33) })
   it('uses Mifflin–St Jeor with documented units', () => { expect(estimateRee({ ageYears: 22, heightCm: 168, weightKg: 66.4, sexForEquation: 'female' }).value).toBe(1443) })
   it('keeps missing sex input unknown', () => { expect(estimateRee({ ageYears: 22, heightCm: 168, weightKg: 66.4, sexForEquation: 'unspecified' }).value).toBeNull() })
   it('converts kJ without discarding source scale', () => { expect(convertKjToKcal(418.4).value).toBe(100) })

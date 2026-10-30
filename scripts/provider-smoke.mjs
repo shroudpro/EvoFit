@@ -18,14 +18,15 @@ if (!key || !base) {
 
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
 const post = async (path, body) => {
+  const startedAt = performance.now()
   try {
     const response = await fetch(`${base}${path}`, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(45_000) })
     const text = await response.text()
     let payload = null
     try { payload = JSON.parse(text) } catch { /* response shape is recorded below */ }
-    return { status: response.status, ok: response.ok, payload, contentType: response.headers.get('content-type') || '' }
+    return { status: response.status, ok: response.ok, payload, latencyMs: Math.round(performance.now() - startedAt), contentType: response.headers.get('content-type') || '' }
   } catch (error) {
-    return { status: 0, ok: false, error: error instanceof Error ? error.name : 'unknown' }
+    return { status: 0, ok: false, latencyMs: Math.round(performance.now() - startedAt), error: error instanceof Error ? error.name : 'unknown' }
   }
 }
 
@@ -57,7 +58,7 @@ result.protocol = protocol || 'unavailable'
 result.status = Object.values(result.tests).every((test) => test.status === 'passed') ? 'passed' : 'partial_or_failed'
 console.log(JSON.stringify(result, null, 2))
 
-function summary(response, semanticPass = response.ok) { return { status: response.ok && semanticPass ? 'passed' : 'failed', httpStatus: response.status, hasJsonPayload: Boolean(response.payload), errorType: response.error || undefined } }
+function summary(response, semanticPass = response.ok) { return { status: response.ok && semanticPass ? 'passed' : 'failed', httpStatus: response.status, latencyMs: response.latencyMs, usage: response.payload?.usage ? { inputTokens: response.payload.usage.input_tokens ?? response.payload.usage.prompt_tokens, outputTokens: response.payload.usage.output_tokens ?? response.payload.usage.completion_tokens, totalTokens: response.payload.usage.total_tokens ?? response.payload.usage.total_tokens } : undefined, hasJsonPayload: Boolean(response.payload), errorType: response.error || undefined } }
 function hasStructuredJson(payload) { const text = extractText(payload); try { const value = JSON.parse(text); return value?.ok === true && value?.label === 'smoke' } catch { return false } }
 function hasToolCall(payload) { return Boolean(payload?.output?.some?.((item) => item.type === 'function_call') || payload?.choices?.[0]?.message?.tool_calls?.length) }
 function extractText(payload) { if (typeof payload?.output_text === 'string') return payload.output_text; if (typeof payload?.choices?.[0]?.message?.content === 'string') return payload.choices[0].message.content; return (payload?.output || []).flatMap((item) => item.content || []).map((content) => typeof content.text === 'string' ? content.text : content.text?.value || content.json || '').join('') }

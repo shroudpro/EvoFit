@@ -1,4 +1,4 @@
-import type { ExerciseLog, GoalType, Meal, NutritionPer100g, UserProfile } from '../shared/types'
+import type { ExerciseLog, GoalType, Meal, NutritionPer100g, TrainingPlan, UserProfile } from '../shared/types'
 
 export interface CalculationResult<T> { value: T; unit: string; methodVersion: string; source: string; assumptions: string[]; limitations: string[] }
 
@@ -34,5 +34,7 @@ export function sumMealNutrients(meals: Meal[]): { kcal: number | null; proteinG
 }
 
 export function analyzeRecordQuality(meals: Meal[], exercises: ExerciseLog[], days = 14) { const mealDays = new Set(meals.map((m) => m.localDate)).size; const exerciseDays = new Set(exercises.map((e) => e.localDate)).size; const coverage = Math.round(((mealDays + exerciseDays) / (days * 2)) * 100); return { mealDays, exerciseDays, coveragePercent: Math.min(100, coverage), evidenceQuality: coverage >= 70 ? 'high' : coverage >= 40 ? 'medium' : 'low' as 'high' | 'medium' | 'low' } }
+
+export function calculateTrainingCompletion(plan: Pick<TrainingPlan, 'sessions'>) { const tasks = plan.sessions.flatMap((session) => session.exercises); if (tasks.length === 0) return 0; return Math.round((tasks.filter((exercise) => exercise.status === 'completed').length / tasks.length) * 100) }
 
 export function estimateDailyBalance(profile: Pick<UserProfile, 'ageYears' | 'heightCm' | 'weightKg' | 'sexForEquation'>, exercises: ExerciseLog[], goal: GoalType) { const ree = estimateRee(profile).value; if (ree === null) return { kcal: null, methodVersion: 'daily-balance-v1', limitation: 'REE 数据不足' }; const baseline = ree * 1.35; const extra = exercises.reduce((sum, e) => sum + (e.netEnergyKcal ?? estimateExerciseEnergy(e).value.netKcal), 0); const goalAdjustment = goal === 'fat_loss' ? -250 : goal === 'muscle_gain' ? 200 : 0; return { kcal: Math.round(baseline + extra + goalAdjustment), methodVersion: 'daily-balance-v1', limitation: '估算；基础活动系数不包含额外记录运动' } }
