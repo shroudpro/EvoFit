@@ -148,3 +148,12 @@
 - 计划历史：审批记录 `approvedAt/resultPlanVersion`；历史版本恢复通过事务创建新版本并写审计，不覆盖旧记录。
 - 验证：局部 7/7；完整单测 14 files / 51 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进入今日时间线、设置删除/隐私和统一离线错误。
+
+## 2026-10-30 · 校赛完整版本阶段 7（Task 14–16）
+
+- 状态：DONE；完成今日时间线、当前 mode 删除/隐私提示、provider 离线降级和统一错误码。
+- 今日页：餐食、运动和训练状态进入同一时间线；目标区间和缺口/盈余仍明确标记为估算。
+- 设置：支持二次确认删除当前 mode 数据，保留 provider 配置和另一 mode；备份继续先预览再合并，不覆盖已有 ID。
+- 错误边界：新增 `EvoFitError` 与稳定错误码；provider 处理离线、限流、超时、鉴权、非法结构化结果，AI 失败不阻塞手工路径。
+- 验证：局部 14/14；完整单测 15 files / 52 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进行完整 P0 E2E、文档矩阵和 handoff 更新。

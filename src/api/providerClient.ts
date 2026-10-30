@@ -28,6 +28,7 @@ function messageFor(status: number, errorCode?: string) {
 
 export async function requestProvider(request: ProviderRequest): Promise<ProviderResponse> {
   if (!request.consentGranted) return { status: 'failed', errorCode: 'CONSENT_REQUIRED', message: '发送模型前需要你的明确同意；数据仍保留在本机。' }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { status: 'failed', errorCode: 'MODEL_UNAVAILABLE', message: '当前处于离线状态，AI 暂不可用；手工记录仍可继续。' }
   const stored = request.config ?? (request.mode ? (await repo.getSetting(request.mode))?.provider : undefined)
   // Legacy modelAdapter calls without a mode continue through the controlled Function.
   // A mode-scoped request must have an explicit saved provider configuration.
@@ -44,7 +45,7 @@ export async function requestProvider(request: ProviderRequest): Promise<Provide
   try {
     const response = await fetch(direct ? responsesEndpoint(config.baseUrl) : functionEndpoint(), { method: 'POST', headers: headersFor(config, direct), body: JSON.stringify(body), signal })
     const payload = await response.json().catch(() => undefined) as { result?: unknown; error?: string; message?: string }
-    if (!response.ok) return { status: response.status === 429 ? 'rate_limited' : 'failed', errorCode: payload?.error, httpStatus: response.status, message: payload?.message ?? messageFor(response.status, payload?.error) }
+    if (!response.ok) return { status: response.status === 429 ? 'rate_limited' : 'failed', errorCode: response.status === 429 ? 'RATE_LIMITED' : payload?.error === 'INVALID_JSON' ? 'INVALID_SCHEMA' : payload?.error ?? 'MODEL_UNAVAILABLE', httpStatus: response.status, message: payload?.message ?? messageFor(response.status, payload?.error) }
     return { status: 'connected', payload: direct ? payload : payload?.result, message: '真实模型已返回结果。', httpStatus: response.status }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return { status: 'timeout', errorCode: 'TIMEOUT', message: '模型请求超时，已回到手工路径。' }
