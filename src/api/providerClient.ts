@@ -16,7 +16,21 @@ export function normalizeFunctionEndpoint(endpoint: string) {
     return url.toString().replace(/\/$/, '')
   } catch { return endpoint.replace(/\/$/, '') }
 }
-function functionEndpoint() { return `${normalizeFunctionEndpoint(import.meta.env.VITE_API_BASE_URL || '/.netlify/functions')}/ai-proxy` }
+export function functionEndpointCandidates(configured = import.meta.env.VITE_API_BASE_URL || '/.netlify/functions') {
+  const normalized = normalizeFunctionEndpoint(configured).replace(/\/$/, '')
+  const endpoints = [`${normalized}/ai-proxy`]
+  try {
+    const url = new URL(configured)
+    if (url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')) {
+      const fallback = new URL(url.toString())
+      fallback.hostname = 'localhost'
+      endpoints.push(`${fallback.toString().replace(/\/$/, '')}/ai-proxy`)
+    }
+  } catch {
+    // Relative same-origin Function paths do not need a host fallback.
+  }
+  return [...new Set(endpoints)]
+}
 function responsesEndpoint(baseUrl: string) { return `${baseUrl.replace(/\/$/, '').replace(/\/responses$/, '')}/responses` }
 function localFunctionEndpoint(endpoint: string) { return /^https?:\/\/(localhost|127\.0\.0\.1):\d+/i.test(endpoint) }
 function headersFor(config: ProviderConfig, direct: boolean): Record<string, string> {
@@ -47,11 +61,24 @@ export async function requestProvider(request: ProviderRequest): Promise<Provide
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   const signal = request.signal ? AbortSignal.any([controller.signal, request.signal]) : controller.signal
+  const configuredFunctionBase = !direct && /\/\.netlify\/functions(?:\/|$)/.test(config.baseUrl) ? config.baseUrl : undefined
+  const endpoints = direct ? [responsesEndpoint(config.baseUrl)] : functionEndpointCandidates(configuredFunctionBase)
   const body = direct
     ? { model: config.model, input: request.input, tools: request.tools, text: { format: { type: 'json_schema', name: request.purpose, strict: true, schema: request.responseSchema } }, max_output_tokens: 800 }
     : { purpose: request.purpose, input: request.input, responseSchema: request.responseSchema, tools: request.tools, consentGranted: request.consentGranted, requestId: crypto.randomUUID() }
   try {
-    const response = await fetch(direct ? responsesEndpoint(config.baseUrl) : functionEndpoint(), { method: 'POST', headers: headersFor(config, direct), body: JSON.stringify(body), signal })
+    let response: Response | undefined
+    let networkError: unknown
+    for (const endpoint of endpoints) {
+      try {
+        response = await fetch(endpoint, { method: 'POST', headers: headersFor(config, direct), body: JSON.stringify(body), signal })
+        break
+      } catch (error) {
+        networkError = error
+        if (direct || endpoint === endpoints[endpoints.length - 1] || !(error instanceof TypeError)) throw error
+      }
+    }
+    if (!response) throw networkError instanceof Error ? networkError : new Error('MODEL_UNAVAILABLE')
     const payload = await response.json().catch(() => undefined) as { result?: unknown; error?: string; message?: string }
     if (!response.ok) {
       const timedOut = response.status === 504 || payload?.error === 'UPSTREAM_TIMEOUT'
@@ -61,7 +88,8 @@ export async function requestProvider(request: ProviderRequest): Promise<Provide
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return { status: 'timeout', errorCode: 'TIMEOUT', message: '模型请求超时，已回到手工路径。' }
     if (error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message)) {
-      if (!direct && localFunctionEndpoint(functionEndpoint())) return { status: 'failed', errorCode: 'LOCAL_FUNCTION_UNAVAILABLE', message: `本地 Function 无法连接：${functionEndpoint()}。请先运行 npm run dev:function，或切换到浏览器直连。` }
+      const localFunction = !direct && endpoints.some((endpoint) => endpoint.startsWith('/') || localFunctionEndpoint(endpoint))
+      if (localFunction) return { status: 'failed', errorCode: 'LOCAL_FUNCTION_UNAVAILABLE', message: `本地 Function 无法连接：${endpoints[0]}。请先运行 npm run dev:function，或切换到浏览器直连。` }
       if (direct) return { status: 'failed', errorCode: 'CORS_OR_NETWORK', message: '浏览器直连失败，通常是 provider 未开启 CORS 或网络不可达；可切换到受控 Function 模式。' }
     }
     return { status: 'failed', errorCode: 'MODEL_UNAVAILABLE', message: error instanceof Error ? `模型连接失败：${error.message}` : '模型连接失败，已回到手工路径。' }

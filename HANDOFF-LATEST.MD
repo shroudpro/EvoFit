@@ -32,6 +32,12 @@
 - Function 返回 504 或 UPSTREAM_TIMEOUT 时，前端统一识别为 TIMEOUT；
 - 仍然保留手工记录和本地确定性计算降级路径。
 
+### 本地 Function 连接修复
+
+- `.env` 默认使用 `VITE_API_BASE_URL=/.netlify/functions`；Vite 将同源请求代理到 `127.0.0.1:8888`，避免浏览器 localhost/IPv4/CORS 差异。
+- provider client 对显式本地地址保留 `127.0.0.1` 和 `localhost` 两个候选端点；第一个网络失败时自动尝试第二个。
+- 修改 `.env` 或 `vite.config.ts` 后必须重启 `npm run dev`；Function 仍需单独运行 `npm run dev:function`。
+
 ### 计划提案安全
 
 create_plan_proposal 现在只允许：
@@ -62,6 +68,7 @@ npm run smoke:provider
 - 相关 provider/Agent/审批回归测试：12/12 通过；
 - 完整单元测试：16 个测试文件、62 个测试全部通过；
 - 真实模型 E2E：9/9 场景通过，包括画像到今日页、手动餐食和刷新、真实餐图候选、真实自然语言运动解析、训练记录保存和刷新、身体指标、Agent 工具调用、proposal 拒绝、今日时间线和备份预览。
+- 同源 Vite 代理训练解析：浏览器请求 `http://127.0.0.1:5173/.netlify/functions/ai-proxy`，代理到 8888 后返回 HTTP 200。
 - provider smoke：文本、结构化 JSON、图像输入和 tool call 均通过。
 
 真实 provider 结果是单次能力探针和受控去敏 E2E，不代表识别准确率、SLA、长期稳定性或费用。真实 key 只存在本机 .env/设置，不得复制到文档、测试、截图或聊天。

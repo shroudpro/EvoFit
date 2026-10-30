@@ -194,3 +194,10 @@
 - 审批安全：`applyApprovedProposal` 增加相同的可应用变更检查，禁止空变更或无效变更生成新计划版本。
 - 回归测试：新增 provider 504 映射、非法提案字段、增加训练量和空提案审批测试。
 - 验证：相关测试 12/12；真实模型 E2E 9/9 场景通过（6 个本地 + 3 个真实模型场景）；最新完整单测 16 files / 62 tests、typecheck 和 build 均通过。
+
+## 2026-10-30 · 本地 Function 连接修复
+
+- 根因：开发环境通过浏览器直连 `127.0.0.1:8888`，在部分 localhost/IPv4/CORS 组合下进入 `LOCAL_FUNCTION_UNAVAILABLE`，即使 Function 进程实际监听正常。
+- 修复：Vite 增加 `/.netlify/functions` 到 `127.0.0.1:8888` 的同源代理；`.env.example` 和本机 `.env` 改为 `VITE_API_BASE_URL=/.netlify/functions`；provider client 对显式本地地址保留 IPv4/localhost 回退。
+- 使用要求：修改 `.env` 或 `vite.config.ts` 后重启 `npm run dev`；保持 `npm run dev:function` 并行运行。
+- 验证：同源浏览器训练解析请求返回 HTTP 200；自然语言运动解析通过；完整单测 16 files / 63 tests、typecheck、build、本地 E2E 和真实模型 E2E 均通过。

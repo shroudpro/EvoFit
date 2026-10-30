@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { requestProvider } from '../../src/api/providerClient'
+import { functionEndpointCandidates, requestProvider } from '../../src/api/providerClient'
 
 describe('provider client timeout mapping', () => {
   afterEach(() => vi.restoreAllMocks())
@@ -10,5 +10,12 @@ describe('provider client timeout mapping', () => {
     expect(result.status).toBe('timeout')
     expect(result.errorCode).toBe('TIMEOUT')
     expect(result.message).toContain('超时')
+  })
+
+  it('keeps both IPv4 and localhost Function endpoints for local fallback', () => {
+    expect(functionEndpointCandidates('http://localhost:8888/.netlify/functions')).toEqual([
+      'http://127.0.0.1:8888/.netlify/functions/ai-proxy',
+      'http://localhost:8888/.netlify/functions/ai-proxy',
+    ])
   })
 })

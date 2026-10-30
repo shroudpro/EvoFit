@@ -12,6 +12,8 @@ npm run build
 npm run dev
 ```
 
+本地真实模型同时运行 `npm run dev:function` 和 `npm run dev`。推荐使用 `VITE_API_BASE_URL=/.netlify/functions`，Vite 会将同源 Function 请求代理到 `http://127.0.0.1:8888`；修改 `.env` 或 `vite.config.ts` 后重启前端开发服务器。
+
 ## Netlify
 
 `netlify.toml` 已配置 `dist`、`netlify/functions` 和 SPA fallback。只在 Netlify 控制台配置 `MODEL_API_KEY`、`MODEL_BASE_URL`、`MODEL_ID`、`APP_ORIGIN`、`PREVIEW_ACCESS_TOKEN`、`MODEL_RATE_LIMIT_MAX`、`MODEL_RATE_LIMIT_WINDOW_MS`、`MODEL_UPSTREAM_TIMEOUT_MS` 等服务器变量；不要配置 `VITE_*` 密钥。Function 只允许白名单模型地址和固定 purpose，并只向配置的 Origin 返回 CORS 头。

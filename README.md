@@ -30,6 +30,8 @@ npm run dev
 
 打开 `http://localhost:5173`。数据默认保存在浏览器 IndexedDB。首次访问会进入画像页；完成画像后可在侧边栏切换真实空间和演示空间。
 
+本地真实模型请求建议保持 `.env` 中 `VITE_API_BASE_URL=/.netlify/functions`。Vite 会把同源请求代理到 `127.0.0.1:8888`，避免浏览器对 `localhost`、IPv4 和 CORS 的差异；修改 `.env` 或 `vite.config.ts` 后需要重启 `npm run dev`。
+
 默认 E2E 会自动启动并回收 Vite：
 
 ```powershell
