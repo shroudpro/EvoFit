@@ -55,6 +55,24 @@ function checkRateLimit(clientKey: string) {
   return { allowed: current.requests <= max, retryAfter: Math.ceil((current.windowStartedAt + windowMs - now) / 1000) }
 }
 
+function normalizeBaseUrl(value: string) {
+  return value.trim().replace(/\/$/, '')
+}
+
+function allowedProviderBaseUrls(baseUrl: string) {
+  const configured = process.env.MODEL_ALLOWED_BASE_URLS?.split(',').map(normalizeBaseUrl).filter(Boolean) ?? []
+  return new Set(configured.length > 0 ? configured : [baseUrl])
+}
+
+function isAllowedProviderBaseUrl(baseUrl: string) {
+  try {
+    const url = new URL(baseUrl)
+    return url.protocol === 'https:' && allowedProviderBaseUrls(baseUrl).has(baseUrl)
+  } catch {
+    return false
+  }
+}
+
 export const handler = async (event: FunctionEvent) => {
   const origin = event.headers?.origin ?? event.headers?.Origin
   const allowedOrigin = process.env.APP_ORIGIN ?? 'http://localhost:5173'
@@ -77,8 +95,8 @@ export const handler = async (event: FunctionEvent) => {
   try { body = JSON.parse(event.body) } catch { return respond(400, { error: 'INVALID_JSON' }) }
   if (!body.purpose || !ALLOWED_PURPOSES.has(body.purpose)) return respond(400, { error: 'PURPOSE_NOT_ALLOWED' })
   if (!body.consentGranted) return respond(403, { error: 'CONSENT_REQUIRED' })
-  const baseUrl = (process.env.MODEL_BASE_URL ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1').replace(/\/$/, '')
-  if (!/^https:\/\/(api\.openai\.com|api\.sudocode\.chat|trusted-provider\.example)\/v1$/.test(baseUrl)) return respond(400, { error: 'PROVIDER_NOT_ALLOWED' })
+  const baseUrl = normalizeBaseUrl(process.env.MODEL_BASE_URL ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1')
+  if (!isAllowedProviderBaseUrl(baseUrl)) return respond(400, { error: 'PROVIDER_NOT_ALLOWED' })
   try {
     const tools = body.purpose === 'weekly_review' ? WEEKLY_REVIEW_TOOLS : body.tools
     const schema = body.purpose === 'chat' ? (body.responseSchema ?? responseSchemas.chat) : responseSchemas[body.purpose]

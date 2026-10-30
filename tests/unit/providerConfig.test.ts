@@ -1,12 +1,17 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, exportModeBackup, repo } from '../../src/db/database'
-import { providerConfigSummary, validateProviderBaseUrl } from '../../src/shared/providerConfig'
+import { defaultProviderConfig, providerConfigSummary, validateProviderBaseUrl } from '../../src/shared/providerConfig'
 import { profileSchema } from '../../src/shared/schemas'
 import { normalizeFunctionEndpoint, requestProvider } from '../../src/api/providerClient'
 
 describe('provider 配置和数据契约', () => {
   beforeEach(async () => { await db.delete(); await db.open() })
+
+  it('keeps browser direct in development and defaults to Function in production', () => {
+    expect(defaultProviderConfig('2026-10-30T00:00:00.000Z', false)).toMatchObject({ transport: 'browser_direct', baseUrl: 'http://localhost:3000/v1' })
+    expect(defaultProviderConfig('2026-10-30T00:00:00.000Z', true)).toMatchObject({ transport: 'function_proxy', baseUrl: '/.netlify/functions' })
+  })
 
   it('只允许安全的浏览器直连地址', () => {
     expect(validateProviderBaseUrl('https://provider.example/v1')).toBe(true)

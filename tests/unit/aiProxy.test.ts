@@ -29,6 +29,50 @@ describe('受控 AI Function', () => {
     expect(body.tools?.map((tool) => tool.name)).not.toContain('apply_plan')
   })
 
+  it('accepts only an exact HTTPS provider from the configured allowlist', async () => {
+    vi.stubEnv('MODEL_API_KEY', 'test-key')
+    vi.stubEnv('MODEL_BASE_URL', 'https://api.sudocode.chat/v1')
+    vi.stubEnv('MODEL_ALLOWED_BASE_URLS', 'https://api.openai.com/v1')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const result = await handler({ httpMethod: 'POST', headers: { origin: 'http://localhost:5173' }, body: JSON.stringify({ purpose: 'parse_exercise', input: '跑步 30 分钟', consentGranted: true }) })
+    expect(result.statusCode).toBe(400)
+    expect(JSON.parse(result.body).error).toBe('PROVIDER_NOT_ALLOWED')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects HTTP providers even when the address is listed', async () => {
+    vi.stubEnv('MODEL_API_KEY', 'test-key')
+    vi.stubEnv('MODEL_BASE_URL', 'http://api.example.test/v1')
+    vi.stubEnv('MODEL_ALLOWED_BASE_URLS', 'http://api.example.test/v1')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+    const result = await handler({ httpMethod: 'POST', headers: { origin: 'http://localhost:5173' }, body: JSON.stringify({ purpose: 'parse_exercise', input: '跑步 30 分钟', consentGranted: true }) })
+    expect(result.statusCode).toBe(400)
+    expect(JSON.parse(result.body).error).toBe('PROVIDER_NOT_ALLOWED')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps OPENAI environment variables as a local compatibility fallback', async () => {
+    vi.stubEnv('OPENAI_API_KEY', 'test-key')
+    vi.stubEnv('OPENAI_BASE_URL', 'https://api.sudocode.chat/v1')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ output_text: '{}' }), { status: 200 }))
+    const result = await handler({ httpMethod: 'POST', headers: { origin: 'http://localhost:5173' }, body: JSON.stringify({ purpose: 'parse_exercise', input: '跑步 30 分钟', consentGranted: true }) })
+    expect(result.statusCode).toBe(200)
+    expect(fetchSpy).toHaveBeenCalledOnce()
+  })
+
+  it('prefers MODEL environment variables over legacy OPENAI values', async () => {
+    vi.stubEnv('MODEL_API_KEY', 'model-key')
+    vi.stubEnv('OPENAI_API_KEY', 'legacy-key')
+    vi.stubEnv('MODEL_BASE_URL', 'https://api.sudocode.chat/v1')
+    vi.stubEnv('OPENAI_BASE_URL', 'https://api.openai.com/v1')
+    vi.stubEnv('MODEL_ALLOWED_BASE_URLS', 'https://api.sudocode.chat/v1')
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ output_text: '{}' }), { status: 200 }))
+    const result = await handler({ httpMethod: 'POST', headers: { origin: 'http://localhost:5173' }, body: JSON.stringify({ purpose: 'parse_exercise', input: '跑步 30 分钟', consentGranted: true }) })
+    expect(result.statusCode).toBe(200)
+    expect(fetchSpy.mock.calls[0]?.[0]).toBe('https://api.sudocode.chat/v1/responses')
+    expect((fetchSpy.mock.calls[0]?.[1]?.headers as Record<string, string>).Authorization).toBe('Bearer model-key')
+  })
+
   it('returns a timeout response when the upstream provider aborts', async () => {
     vi.stubEnv('MODEL_API_KEY', 'test-key')
     vi.stubEnv('MODEL_BASE_URL', 'https://api.sudocode.chat/v1')

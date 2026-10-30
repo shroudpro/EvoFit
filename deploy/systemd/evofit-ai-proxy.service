@@ -1,0 +1,21 @@
+[Unit]
+Description=EvoFit AI Proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=evofit
+Group=evofit
+WorkingDirectory=/srv/evofit/current
+EnvironmentFile=/etc/evofit/evofit.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --experimental-strip-types /srv/evofit/current/server/ai-proxy.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

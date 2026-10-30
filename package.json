@@ -12,6 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "dev:function": "node --experimental-strip-types scripts/local-ai-proxy.mjs",
+    "start:proxy": "node --experimental-strip-types server/ai-proxy.mjs",
+    "smoke:server": "node scripts/production-proxy-smoke.mjs",
     "smoke:model": "node scripts/model-smoke.mjs",
     "smoke:provider": "node scripts/provider-smoke.mjs",
     "lint": "eslint ."

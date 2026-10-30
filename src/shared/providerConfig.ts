@@ -23,8 +23,8 @@ export interface ProviderConfigSummary {
   updatedAt: string
 }
 
-export function defaultProviderConfig(now = new Date().toISOString()): ProviderConfig {
-  return { id: 'active', transport: 'browser_direct', protocol: 'responses', baseUrl: 'http://localhost:3000/v1', model: 'gpt-6-luna', apiKey: '', enabled: false, updatedAt: now }
+export function defaultProviderConfig(now = new Date().toISOString(), production = Boolean(import.meta.env.PROD)): ProviderConfig {
+  return { id: 'active', transport: production ? 'function_proxy' : 'browser_direct', protocol: 'responses', baseUrl: production ? '/.netlify/functions' : 'http://localhost:3000/v1', model: 'gpt-6-luna', apiKey: '', enabled: production, updatedAt: now }
 }
 
 export function validateProviderBaseUrl(value: string): boolean {

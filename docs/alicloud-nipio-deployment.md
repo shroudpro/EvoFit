@@ -73,19 +73,19 @@ server/ai-proxy.mjs
 
 ### 3.2 让 Base URL 可以由服务器环境文件配置
 
-当前 `netlify/functions/ai-proxy.ts` 用硬编码正则限制了 provider 地址。如果服务器环境中填写了其他兼容 Responses API 的 Base URL，当前代码会返回 `PROVIDER_NOT_ALLOWED`。
+当前 `netlify/functions/ai-proxy.ts` 使用服务器环境中的精确 allowlist 限制 provider 地址。服务器环境中填写的 Base URL 必须同时出现在 `MODEL_ALLOWED_BASE_URLS`，否则返回 `PROVIDER_NOT_ALLOWED`。
 
 部署前应将这段校验改为：
 
 1. 从 `MODEL_BASE_URL` 读取实际地址。
 2. 从 `MODEL_ALLOWED_BASE_URLS` 读取允许的精确地址列表。
-3. 只有 `MODEL_BASE_URL` 完全匹配允许列表，并且使用 HTTPS 时才继续请求。
+3. 只有 `MODEL_BASE_URL` 完全匹配允许列表，并且使用 HTTPS 时才继续请求。开发环境没有设置 allowlist 时，代码会把当前解析出的 base URL 作为唯一允许值，以兼容现有 `OPENAI_*` 本地变量；服务器模板必须显式填写 allowlist。
 
 服务器环境文件示例：
 
 ```dotenv
-MODEL_BASE_URL=https://你的供应商.example/v1
-MODEL_ALLOWED_BASE_URLS=https://你的供应商.example/v1
+MODEL_BASE_URL=https://api.sudocode.chat/v1
+MODEL_ALLOWED_BASE_URLS=https://api.sudocode.chat/v1
 ```
 
 多个地址用英文逗号分隔：
@@ -96,15 +96,15 @@ MODEL_ALLOWED_BASE_URLS=https://api.openai.com/v1,https://你的供应商.exampl
 
 这样你以后只需要修改服务器环境文件，不需要把 API Key 或 Base URL 写进前端，也不需要每次改源码。不要为了省事把校验改成允许任意 HTTP 地址。
 
-### 3.3 生产默认使用 `function_proxy`
+### 3.3 生产默认使用 `function_proxy`，保留高级直连覆盖
 
-生产环境不要让评委在浏览器中输入模型 API Key。
+生产新浏览器默认使用服务器环境文件中的 API，不需要评委输入模型 API Key。现有 `browser_direct` 仍保留为自定义 API 高级覆盖，选择后 key 会保存在当前浏览器并直接发送到自定义 HTTPS provider。
 
 建议调整：
 
-- `src/shared/providerConfig.ts`：生产默认传输方式改为 `function_proxy`。
-- `src/pages/Settings.tsx`：生产构建隐藏或禁用 `browser_direct` 选项。
-- 本地开发仍可保留 `browser_direct`，但只用于开发人员自己的浏览器。
+- `src/shared/providerConfig.ts`：生产默认传输方式为 `function_proxy`，默认路径为 `/.netlify/functions`。
+- `src/pages/Settings.tsx`：保留 `browser_direct`，标记为自定义 API 高级覆盖，并显示浏览器保存 key 的风险提示。
+- 只有明确选择高级覆盖时才会绕过服务器默认 API；切回 Function proxy 后继续使用服务器配置。
 
 ### 3.4 增加部署模板
 
@@ -158,7 +158,7 @@ npx tsc --noEmit --ignoreConfig netlify/functions/ai-proxy.ts --target ES2022 --
 
 ### 4.3 启动本地 AI Proxy
 
-开发人员自己的模型变量放在项目根目录 `.env`，该文件已经被 `.gitignore` 忽略，绝不能提交。
+开发人员自己的模型变量放在项目根目录 `.env`，该文件已经被 `.gitignore` 忽略，绝不能提交。生产入口 `server/ai-proxy.mjs` 不读取该文件，只读取 systemd 的 `EnvironmentFile`。
 
 终端一：
 
@@ -331,12 +331,13 @@ sudo nano /etc/evofit/evofit.env
 
 ```dotenv
 MODEL_API_KEY=在这里填写模型APIKey
-MODEL_BASE_URL=https://你的供应商.example/v1
-MODEL_ALLOWED_BASE_URLS=https://你的供应商.example/v1
+MODEL_BASE_URL=https://api.sudocode.chat/v1
+MODEL_ALLOWED_BASE_URLS=https://api.sudocode.chat/v1
 MODEL_ID=gpt-6-luna
 APP_ORIGIN=https://47.94.174.218.nip.io
 MODEL_RATE_LIMIT_MAX=5
 MODEL_RATE_LIMIT_WINDOW_MS=300000
+MODEL_UPSTREAM_TIMEOUT_MS=45000
 ```
 
 按 `Ctrl+O` 保存，按回车确认，再按 `Ctrl+X` 退出。
@@ -428,7 +429,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header x-nf-client-connection-ip $remote_addr;
-        proxy_read_timeout 20s;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
         client_max_body_size 7m;
     }
 
@@ -569,6 +571,7 @@ npm test -- --run       全部通过
 npm run build           通过
 Function 类型检查       通过
 本地 E2E                通过
+生产入口 smoke          通过（npm run smoke:server）
 生产入口可启动          通过
 源码和 dist 无 API Key   通过（扫描排除 .env）
 ```
