@@ -1,24 +1,10 @@
 import { exerciseParseSchema, mealAnalysisSchema, weeklyReviewSchema, type ExerciseParse } from '../shared/schemas'
+import { requestProvider } from './providerClient'
 
 export type ModelStatus = 'unconfigured' | 'failed' | 'connected' | 'mock'
 export interface ModelResult<T> { status: ModelStatus; value?: T; message: string }
 export type ReadOnlyToolName = 'get_profile' | 'list_meals' | 'list_exercises' | 'analyze_trends' | 'calculate_daily_balance'
 export type ReadOnlyToolExecutor = (name: ReadOnlyToolName, argumentsValue: Record<string, unknown>) => Promise<unknown>
-
-const endpoint = () => `${(import.meta.env.VITE_API_BASE_URL || '/.netlify/functions').replace(/\/$/, '')}/ai-proxy`
-const MODEL_REQUEST_TIMEOUT_MS = 15_000
-
-function previewAuthHeaders(): Record<string, string> {
-  if (typeof sessionStorage === 'undefined') return {}
-  const token = sessionStorage.getItem('evofit-preview-token')
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
-
-async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit) {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), MODEL_REQUEST_TIMEOUT_MS)
-  try { return await fetch(input, { ...init, signal: controller.signal }) } finally { clearTimeout(timeout) }
-}
 
 function extractText(payload: unknown): string {
   if (!payload || typeof payload !== 'object') return ''
@@ -29,33 +15,15 @@ function extractText(payload: unknown): string {
 }
 
 async function requestModel<T>(purpose: 'analyze_meal' | 'parse_exercise' | 'weekly_review', input: unknown, schema: { parse: (value: unknown) => T }, consentGranted: boolean): Promise<ModelResult<T>> {
-  if (!consentGranted) return { status: 'failed', message: '发送模型前需要你的明确同意；数据仍保留在本机。' }
-  try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...previewAuthHeaders() }
-    const response = await fetchWithTimeout(endpoint(), { method: 'POST', headers, body: JSON.stringify({ purpose, input, consentGranted }) })
-    const payload = await response.json().catch(() => ({})) as { error?: string; message?: string; result?: unknown }
-    if (response.status === 503 || payload.error === 'MODEL_NOT_CONFIGURED') return { status: 'unconfigured', message: '真实模型未配置；已回到手工或本地规则路径。' }
-    if (!response.ok) return { status: 'failed', message: payload.message || `模型请求失败（${response.status}）。已回到手工或本地规则路径。` }
-    const text = extractText(payload.result)
-    const parsed = schema.parse(JSON.parse(text))
-    return { status: 'connected', value: parsed, message: '真实模型已返回结构化结果，请检查并确认。' }
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') return { status: 'failed', message: '模型请求超时，已回到手工路径。' }
-    return { status: 'failed', message: error instanceof Error ? `模型结果无法验证：${error.message}` : '模型结果无法验证，已回到手工路径。' }
-  }
+  const response = await requestProvider({ purpose, input, responseSchema: {}, consentGranted })
+  if (response.status !== 'connected') return { status: response.status === 'unconfigured' ? 'unconfigured' : 'failed', message: response.message }
+  try { return { status: 'connected', value: schema.parse(JSON.parse(extractText(response.payload))), message: '真实模型已返回结构化结果，请检查并确认。' } }
+  catch (error) { return { status: 'failed', message: error instanceof Error ? `模型结果无法验证：${error.message}` : '模型结果无法验证，已回到手工路径。' } }
 }
 
 async function requestWeeklyModel(input: unknown, consentGranted: boolean) {
-  try {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json', ...previewAuthHeaders() }
-    const response = await fetchWithTimeout(endpoint(), { method: 'POST', headers, body: JSON.stringify({ purpose: 'weekly_review', input, consentGranted }) })
-    const payload = await response.json().catch(() => ({})) as { error?: string; message?: string; result?: unknown }
-    if (response.status === 503 || payload.error === 'MODEL_NOT_CONFIGURED') return { status: 'unconfigured' as const, message: '真实模型未配置；已回到本地规则路径。' }
-    if (!response.ok) return { status: 'failed' as const, message: payload.message || `模型请求失败（${response.status}）。已回到本地规则路径。` }
-    return { status: 'connected' as const, payload: payload.result as Record<string, unknown>, message: '真实模型已返回结果。' }
-  } catch (error) {
-    return { status: 'failed' as const, message: error instanceof DOMException && error.name === 'AbortError' ? '模型请求超时，已回到本地规则路径。' : '模型请求失败，已回到本地规则路径。' }
-  }
+  const response = await requestProvider({ purpose: 'weekly_review', input, responseSchema: {}, consentGranted })
+  return response.status === 'connected' ? { status: 'connected' as const, payload: response.payload as Record<string, unknown>, message: response.message } : { status: response.status === 'unconfigured' ? 'unconfigured' as const : 'failed' as const, message: response.message }
 }
 
 function extractToolCalls(payload: Record<string, unknown>) {

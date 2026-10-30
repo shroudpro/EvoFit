@@ -103,3 +103,12 @@
 - 备份：导出新增目标、身体指标、会话和消息，provider 只导出脱敏摘要；导入与清理仍按当前 mode 隔离，provider 配置不受 mode 数据清理影响。
 - 验证：`npm test -- --run tests/unit/providerConfig.test.ts tests/unit/repository.test.ts tests/unit/backup.test.ts` → 11/11；`npm run typecheck` → PASS；完整单测 → 8 files / 35 tests；`npm run build` → PASS（保留既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进入统一 provider client 与设置页配置。
+
+## 2026-10-30 · 校赛完整版本阶段 2（Task 3–4）
+
+- 状态：DONE；完成统一 provider client、直连/Function 两种传输、统一错误状态和设置页配置流程。
+- Provider：`src/api/providerClient.ts` 统一 15 秒超时、响应 schema、访问码、HTTP 错误映射；浏览器直连只允许 HTTPS 或本机 HTTP，Function 模式不发送浏览器 key。
+- 模型适配：`modelAdapter.ts` 复用统一 client，保留餐图、运动和周报结构化校验；周报 Function 仍强制服务端只读工具白名单。
+- 设置页：支持保存配置、连接测试、脱敏状态和清除本地 key；导出 JSON 只保留 provider summary，不回显 key。
+- 验证：`npm test -- --run tests/unit/modelAdapter.test.ts tests/unit/aiProxy.test.ts` → 12/12；完整单测 → 8 files / 35 tests；`npm run typecheck` → PASS；`npm run build` → PASS（保留既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进入画像安全、目标和营养计算。
