@@ -32,6 +32,7 @@ export const repo = {
   listExercises: (mode: Mode, localDate?: string) => localDate ? db.exercises.where('[mode+localDate]').equals([mode, localDate]).toArray() : db.exercises.where('mode').equals(mode).toArray(),
   putExercise: (exercise: ExerciseLog) => db.exercises.put(exercise),
   getLatestPlan: (mode: Mode, profileId: string) => db.plans.where('[mode+profileId]').equals([mode, profileId]).reverse().sortBy('version').then((rows) => rows[0]),
+  listPlans: (mode: Mode, profileId: string) => db.plans.where('[mode+profileId]').equals([mode, profileId]).sortBy('version'),
   putPlan: (plan: TrainingPlan) => db.plans.put(plan),
   listProposals: (mode: Mode, profileId: string) => db.proposals.where('[mode+profileId]').equals([mode, profileId]).reverse().sortBy('createdAt'),
   putProposal: (proposal: PlanProposal) => db.proposals.put(proposal),
@@ -62,6 +63,15 @@ export const repo = {
     const timestamp = new Date().toISOString()
     const sessions = plan.sessions.map((item) => item.day !== sessionDay ? item : { ...item, exercises: item.exercises.map((candidate) => candidate.id !== exerciseId ? candidate : { ...candidate, status, completedAt: status === 'completed' ? timestamp : undefined, skippedAt: status === 'skipped' ? timestamp : undefined }) })
     await db.plans.put({ ...plan, sessions, updatedAt: timestamp })
+  }),
+  rescheduleTrainingExercise: async (mode: Mode, planId: string, sessionDay: number, exerciseId: string, scheduledDate: string) => db.transaction('rw', [db.plans, db.audit], async () => {
+    const plan = await db.plans.where('[mode+id]').equals([mode, planId]).first(); if (!plan) throw new Error('PLAN_NOT_FOUND')
+    const session = plan.sessions.find((item) => item.day === sessionDay); const exercise = session?.exercises.find((item) => item.id === exerciseId); if (!exercise) throw new Error('TRAINING_EXERCISE_NOT_FOUND')
+    const timestamp = new Date().toISOString(); const sessions = plan.sessions.map((item) => item.day !== sessionDay ? item : { ...item, exercises: item.exercises.map((candidate) => candidate.id !== exerciseId ? candidate : { ...candidate, status: 'postponed' as const, scheduledDate }) })
+    await db.plans.put({ ...plan, sessions, updatedAt: timestamp }); await db.audit.put({ id: `audit_${crypto.randomUUID()}`, mode, schemaVersion: 1, createdAt: timestamp, updatedAt: timestamp, action: 'reschedule_training', entityId: exerciseId, summary: `${exercise.name} 改期至 ${scheduledDate}` })
+  }),
+  updateTrainingFeedback: async (mode: Mode, planId: string, sessionDay: number, exerciseId: string, feedback: string, rpe?: number) => db.transaction('rw', db.plans, async () => {
+    const plan = await db.plans.where('[mode+id]').equals([mode, planId]).first(); if (!plan) throw new Error('PLAN_NOT_FOUND'); const timestamp = new Date().toISOString(); const sessions = plan.sessions.map((item) => item.day !== sessionDay ? item : { ...item, exercises: item.exercises.map((candidate) => candidate.id !== exerciseId ? candidate : { ...candidate, feedback: feedback.trim().slice(0, 500), rpe }) }); await db.plans.put({ ...plan, sessions, updatedAt: timestamp })
   }),
 }
 

@@ -121,3 +121,12 @@
 - 目标：`calculateGoalPlan` 输出方法版本、假设和限制；`calculateProteinRange` 与 `calculateEstimatedBalance` 区分缺口、盈余和未知证据；今日页展示估计范围。
 - 验证：安全/目标局部单测 6/6；完整单测 10 files / 41 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进入食物目录、动作目录和训练日历。
+
+## 2026-10-30 · 校赛完整版本阶段 4（Task 7–8）
+
+- 状态：DONE；完成食物/动作目录、饮食搜索和训练日历基础能力。
+- 食物：新增 30 条人工核验基础食材，支持关键词过滤、每 100 g 营养展示和未知食物保留 `null`；演示数据初始化会写入目录版本。
+- 训练：新增 21 个基础动作目录；计划任务支持 `postponed`、`scheduledDate`、RPE/反馈字段，一周日历选择、改期和审计记录已接入。
+- 验证：目录与仓储局部单测 14/14；完整单测 11 files / 43 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 回归修复：日历摘要与任务状态重复文案导致 E2E 精确定位冲突，已改为短状态词并重新通过全量门禁。
+- 提交：待本阶段变更审阅后提交，下一阶段进入 Agent 工具注册表、聊天控制器和教练 UI。
