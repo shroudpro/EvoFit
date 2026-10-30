@@ -166,3 +166,12 @@
 - 回归修复：统一 client 的空 schema 曾覆盖 Function 固定 schema，导致真实餐图结构化结果超时；Function 现对餐图/运动/周报始终使用服务端 schema，chat 才接受受控 schema。
 - 文档：新增 `docs/school-competition-complete-readiness.md`；更新 architecture、acceptance、requirements-trace、ai-evaluation、README 和 `HANDOFF_R3.md`。
 - 最终本地证据：`npm run typecheck` PASS；完整单测 15 files / 52 tests PASS；`npm run build` PASS（既有 bundle warning）；本地与真实 provider E2E PASS。
+
+## 2026-10-30 · 个性化 AI 教练重构
+
+- 状态：DONE；修复 BMI 查询落入固定 fallback 的根因，并将聊天路由改为“模型主路由 + 本地安全门”。
+- 上下文：新增 `src/api/chatContext.ts`，每次同意后的 chat 请求携带压缩画像、BMI、目标、当前训练计划和最近 14 天摘要；系统提示词明确禁止重复询问已知数据和直接写计划。
+- 路由：普通聊天直接返回自然语言；历史查询按需调用只读工具；计划修改只能调用 `create_plan_proposal`；provider 不可用时只对 BMI/画像基础信息做本地只读回答，不再返回无关固定句。
+- BMI：未同意模型时从当前画像本地计算并回答；同意模型时 API 直接依据上下文回答，不调用 BMI 工具。
+- 工具安全：修复 provider 工具 schema 直接发送 Zod 对象的问题，现发送严格 JSON Schema；mode/profile/date 校验保持不变。
+- 验证：相关单测 19/19；完整单测 15 files / 56 tests；`npm run typecheck` PASS；`npm run build` PASS（既有 bundle warning）；`npm run test:e2e` 6 场景 PASS。

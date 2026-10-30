@@ -8,10 +8,23 @@ import type { PlanProposal } from '../shared/types'
 const scoped = (shape: z.ZodRawShape) => z.object({ mode: z.enum(['real', 'demo']), profileId: z.string().optional(), ...shape }).strict()
 const daysSchema = z.number().int().min(1).max(30).default(14)
 const tools = new Map<string, AgentToolDefinition>()
+const validators = new Map<string, z.ZodTypeAny>()
+const jsonSchemas: Record<string, object> = {
+  get_profile: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' } }, required: ['mode'], additionalProperties: false },
+  list_meals: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, days: { type: 'integer', minimum: 1, maximum: 30 } }, required: ['mode'], additionalProperties: false },
+  list_exercises: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, days: { type: 'integer', minimum: 1, maximum: 30 } }, required: ['mode'], additionalProperties: false },
+  get_training_plan: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' } }, required: ['mode'], additionalProperties: false },
+  lookup_food_nutrients: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, query: { type: 'string', minLength: 1, maxLength: 100 } }, required: ['mode', 'query'], additionalProperties: false },
+  lookup_activity_met: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, activityCode: { type: 'string' }, intensity: { type: 'string', enum: ['light', 'moderate', 'vigorous'] } }, required: ['mode', 'activityCode'], additionalProperties: false },
+  calculate_daily_balance: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, localDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } }, required: ['mode'], additionalProperties: false },
+  analyze_trends: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, days: { type: 'integer', minimum: 1, maximum: 30 } }, required: ['mode'], additionalProperties: false },
+  get_body_metrics: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, days: { type: 'integer', minimum: 1, maximum: 30 } }, required: ['mode'], additionalProperties: false },
+  create_plan_proposal: { type: 'object', properties: { mode: { type: 'string', enum: ['real', 'demo'] }, profileId: { type: 'string' }, rationale: { type: 'string', minLength: 1, maxLength: 1000 }, limitations: { type: 'array', items: { type: 'string' }, maxItems: 10 }, changes: { type: 'array', maxItems: 10, items: { type: 'object', properties: { field: { type: 'string' }, after: { type: ['string', 'number'] }, reason: { type: 'string' } }, required: ['field', 'after', 'reason'], additionalProperties: false } }, evidenceQuality: { type: 'string', enum: ['low', 'medium', 'high'] } }, required: ['mode', 'rationale', 'changes'], additionalProperties: false },
+}
 
 function assertScope(input: { mode: string; profileId?: string }, context: AgentToolContext) { if (input.mode !== context.mode) throw new Error('MODE_SCOPE_MISMATCH'); if (input.profileId && input.profileId !== context.profileId) throw new Error('PROFILE_SCOPE_MISMATCH') }
 function cutoff(days: number) { return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10) }
-function register(definition: AgentToolDefinition, schema: z.ZodTypeAny) { tools.set(definition.name, { ...definition, inputSchema: schema }) }
+function register(definition: AgentToolDefinition, schema: z.ZodTypeAny) { tools.set(definition.name, definition); validators.set(definition.name, schema) }
 
 register({ name: 'get_profile', permission: 'read', inputSchema: {}, execute: async (input, context) => { assertScope(input as { mode: string; profileId?: string }, context); const profile = await repo.getProfile(context.mode); if (!profile || profile.id !== context.profileId) throw new Error('PROFILE_NOT_FOUND'); return { ageYears: profile.ageYears, heightCm: profile.heightCm, weightKg: profile.weightKg, targetWeightKg: profile.targetWeightKg, goalType: profile.goalType, activityLevel: profile.activityLevel, equipment: profile.equipment, availableMinutesPerDay: profile.availableMinutesPerDay, healthRiskFlags: profile.healthRiskFlags } } }, scoped({}))
 register({ name: 'list_meals', permission: 'read', inputSchema: {}, execute: async (input, context) => { const value = input as { mode: 'real' | 'demo'; days?: number; profileId?: string }; assertScope(value, context); const rows = (await repo.listMeals(context.mode)).filter((row) => row.localDate >= cutoff(value.days ?? 14)); return rows.map((meal) => ({ localDate: meal.localDate, mealType: meal.mealType, items: meal.items.map((item) => ({ foodName: item.foodName, massGrams: item.massGrams, confirmed: item.isUserConfirmed })) })) } }, scoped({ days: daysSchema }))
@@ -26,5 +39,5 @@ register({ name: 'create_plan_proposal', permission: 'proposal', inputSchema: {}
 
 export const agentTools = [...tools.values()]
 export function getAgentTool(name: string) { return tools.get(name) }
-export function listAgentToolDefinitions() { return agentTools.map(({ name, permission, inputSchema }) => ({ name, permission, inputSchema })) }
-export async function executeAgentTool(name: string, input: unknown, context: AgentToolContext) { const tool = tools.get(name); if (!tool) throw new Error('UNKNOWN_TOOL'); const parsed = (tool.inputSchema as z.ZodTypeAny).safeParse(input); if (!parsed.success) throw new Error('INVALID_TOOL_ARGUMENTS'); return tool.execute(parsed.data, context) }
+export function listAgentToolDefinitions() { return agentTools.map(({ name, permission }) => ({ name, permission, inputSchema: jsonSchemas[name] ?? {} })) }
+export async function executeAgentTool(name: string, input: unknown, context: AgentToolContext) { const tool = tools.get(name); const validator = validators.get(name); if (!tool || !validator) throw new Error('UNKNOWN_TOOL'); const parsed = validator.safeParse(input); if (!parsed.success) throw new Error('INVALID_TOOL_ARGUMENTS'); return tool.execute(parsed.data, context) }
