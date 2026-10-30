@@ -175,3 +175,9 @@
 - BMI：未同意模型时从当前画像本地计算并回答；同意模型时 API 直接依据上下文回答，不调用 BMI 工具。
 - 工具安全：修复 provider 工具 schema 直接发送 Zod 对象的问题，现发送严格 JSON Schema；mode/profile/date 校验保持不变。
 - 验证：相关单测 19/19；完整单测 15 files / 56 tests；`npm run typecheck` PASS；`npm run build` PASS（既有 bundle warning）；`npm run test:e2e` 6 场景 PASS。
+
+## 2026-10-30 · provider 连接错误诊断
+
+- 根因：只运行 `npm run dev` 时，前端请求的本地 Function `http://localhost:8888/.netlify/functions/ai-proxy` 没有启动，因此浏览器显示 `Failed to fetch`。
+- 修复：provider client 现在区分 `LOCAL_FUNCTION_UNAVAILABLE` 与浏览器直连的 `CORS_OR_NETWORK`；设置页明确提示本地 Function 需要并行运行 `npm run dev:function`，保存配置后不会伪显示“已连接”。
+- 验证：provider 配置单测 5/5；完整回归将在本次连接提示变更后继续执行。

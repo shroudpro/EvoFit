@@ -11,6 +11,7 @@ const REQUEST_TIMEOUT_MS = 15_000
 
 function functionEndpoint() { return `${(import.meta.env.VITE_API_BASE_URL || '/.netlify/functions').replace(/\/$/, '')}/ai-proxy` }
 function responsesEndpoint(baseUrl: string) { return `${baseUrl.replace(/\/$/, '').replace(/\/responses$/, '')}/responses` }
+function localFunctionEndpoint(endpoint: string) { return /^https?:\/\/(localhost|127\.0\.0\.1):\d+/i.test(endpoint) }
 function headersFor(config: ProviderConfig, direct: boolean): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (direct && config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`
@@ -49,6 +50,10 @@ export async function requestProvider(request: ProviderRequest): Promise<Provide
     return { status: 'connected', payload: direct ? payload : payload?.result, message: '真实模型已返回结果。', httpStatus: response.status }
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return { status: 'timeout', errorCode: 'TIMEOUT', message: '模型请求超时，已回到手工路径。' }
+    if (error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+      if (!direct && localFunctionEndpoint(functionEndpoint())) return { status: 'failed', errorCode: 'LOCAL_FUNCTION_UNAVAILABLE', message: `本地 Function 无法连接：${functionEndpoint()}。请先运行 npm run dev:function，或切换到浏览器直连。` }
+      if (direct) return { status: 'failed', errorCode: 'CORS_OR_NETWORK', message: '浏览器直连失败，通常是 provider 未开启 CORS 或网络不可达；可切换到受控 Function 模式。' }
+    }
     return { status: 'failed', errorCode: 'MODEL_UNAVAILABLE', message: error instanceof Error ? `模型连接失败：${error.message}` : '模型连接失败，已回到手工路径。' }
   } finally { clearTimeout(timeout) }
 }

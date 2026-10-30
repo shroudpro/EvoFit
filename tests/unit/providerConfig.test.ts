@@ -1,8 +1,9 @@
 import 'fake-indexeddb/auto'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { db, exportModeBackup, repo } from '../../src/db/database'
 import { providerConfigSummary, validateProviderBaseUrl } from '../../src/shared/providerConfig'
 import { profileSchema } from '../../src/shared/schemas'
+import { requestProvider } from '../../src/api/providerClient'
 
 describe('provider 配置和数据契约', () => {
   beforeEach(async () => { await db.delete(); await db.open() })
@@ -34,5 +35,15 @@ describe('provider 配置和数据契约', () => {
     const backup = await exportModeBackup('real')
     expect(JSON.stringify(backup)).not.toContain('secret-key')
     expect(backup.provider).toMatchObject({ hasApiKey: true, model: 'gpt-6-luna' })
+  })
+
+  it('distinguishes a stopped local Function from browser-direct CORS failure', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'))
+    const functionResult = await requestProvider({ purpose: 'chat', input: 'ping', responseSchema: {}, consentGranted: true, config: { id: 'active', transport: 'function_proxy', protocol: 'responses', baseUrl: 'http://localhost:8888/.netlify/functions', model: 'gpt-6-luna', apiKey: '', enabled: true, updatedAt: '2026-10-30T00:00:00.000Z' } })
+    expect(functionResult.errorCode).toBe('LOCAL_FUNCTION_UNAVAILABLE')
+    expect(functionResult.message).toContain('8888')
+    const directResult = await requestProvider({ purpose: 'chat', input: 'ping', responseSchema: {}, consentGranted: true, config: { id: 'active', transport: 'browser_direct', protocol: 'responses', baseUrl: 'https://provider.example/v1', model: 'gpt-6-luna', apiKey: 'key', enabled: true, updatedAt: '2026-10-30T00:00:00.000Z' } })
+    expect(directResult.errorCode).toBe('CORS_OR_NETWORK')
+    expect(directResult.message).toContain('CORS')
   })
 })
