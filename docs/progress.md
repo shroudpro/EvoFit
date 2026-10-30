@@ -93,3 +93,13 @@
 - 真实模型餐图候选经过用户改名/改重后保存；运动解析经过用户参数确认后由本地 MET 公式保存；周报模型实际请求 `analyze_trends` 等白名单只读工具，返回结构化提案，浏览器拒绝后计划保持不变。
 - 真实 provider 的 tool + structured 初始请求为 HTTP 200；直接使用 `previous_response_id` 被当前第三方端点拒绝，因此适配器改为回放受控 Responses input 项继续 tool loop，并通过真实浏览器 E2E 验证。
 - 遗留：公网 Netlify 部署、真实餐图准确率/费用/延迟评测和手机真机验收仍未完成。
+
+## 2026-10-30 · 校赛完整版本阶段 1（Task 1–2）
+
+- 状态：DONE；完成完整画像/目标基础契约、provider 配置脱敏契约和 Dexie v3 迁移基础。
+- 数据契约：`UserProfile` 增加活动水平、可用时间、健康风险、过敏和餐食偏好；新增 `BodyMetric`、`GoalPlan`、`ChatConversation`、`ChatMessage`、食物/动作目录类型。
+- Provider 边界：新增 `src/shared/providerConfig.ts`，限制浏览器直连 URL，摘要只保留 `hasApiKey`，API key 不进入导出 JSON。
+- 数据库：新增 v3 `settings`、`bodyMetrics`、`goals`、`conversations`、`messages`、`foods`、`exerciseCatalog` 表；旧 profile 在迁移时使用安全默认值，不生成虚构指标。
+- 备份：导出新增目标、身体指标、会话和消息，provider 只导出脱敏摘要；导入与清理仍按当前 mode 隔离，provider 配置不受 mode 数据清理影响。
+- 验证：`npm test -- --run tests/unit/providerConfig.test.ts tests/unit/repository.test.ts tests/unit/backup.test.ts` → 11/11；`npm run typecheck` → PASS；完整单测 → 8 files / 35 tests；`npm run build` → PASS（保留既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进入统一 provider client 与设置页配置。
