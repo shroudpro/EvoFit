@@ -181,3 +181,6 @@
 - 根因：只运行 `npm run dev` 时，前端请求的本地 Function `http://localhost:8888/.netlify/functions/ai-proxy` 没有启动，因此浏览器显示 `Failed to fetch`。
 - 修复：provider client 现在区分 `LOCAL_FUNCTION_UNAVAILABLE` 与浏览器直连的 `CORS_OR_NETWORK`；设置页明确提示本地 Function 需要并行运行 `npm run dev:function`，保存配置后不会伪显示“已连接”。
 - 验证：provider 配置单测 5/5；完整回归将在本次连接提示变更后继续执行。
+
+- 补充诊断：Windows `localhost` 解析同时包含 `::1` 和 `127.0.0.1`，而本地 Function 监听 IPv4；前端现自动将本地 Function URL 规范化为 `127.0.0.1`。
+- 最新验证：provider 配置单测 6/6；完整单测 15 files / 58 tests；typecheck、build、E2E 全部 PASS。

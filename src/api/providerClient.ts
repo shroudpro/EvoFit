@@ -9,7 +9,14 @@ export interface ProviderResponse { status: ProviderResponseStatus; payload?: un
 
 const REQUEST_TIMEOUT_MS = 15_000
 
-function functionEndpoint() { return `${(import.meta.env.VITE_API_BASE_URL || '/.netlify/functions').replace(/\/$/, '')}/ai-proxy` }
+export function normalizeFunctionEndpoint(endpoint: string) {
+  try {
+    const url = new URL(endpoint)
+    if (url.protocol === 'http:' && url.hostname.toLowerCase() === 'localhost') url.hostname = '127.0.0.1'
+    return url.toString().replace(/\/$/, '')
+  } catch { return endpoint.replace(/\/$/, '') }
+}
+function functionEndpoint() { return `${normalizeFunctionEndpoint(import.meta.env.VITE_API_BASE_URL || '/.netlify/functions')}/ai-proxy` }
 function responsesEndpoint(baseUrl: string) { return `${baseUrl.replace(/\/$/, '').replace(/\/responses$/, '')}/responses` }
 function localFunctionEndpoint(endpoint: string) { return /^https?:\/\/(localhost|127\.0\.0\.1):\d+/i.test(endpoint) }
 function headersFor(config: ProviderConfig, direct: boolean): Record<string, string> {
