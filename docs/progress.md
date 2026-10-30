@@ -139,3 +139,12 @@
 - UI：App 静态抽屉已替换为 `ChatCoach`，包含快捷问题、会话列表、消息区、同意开关、停止按钮、ToolTrace 摘要和提案审批卡片；批准复用原有事务。
 - 验证：Agent/chat 局部单测 5/5；完整单测 13 files / 48 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
 - 提交：待本阶段变更审阅后提交，下一阶段进入身体指标、固定窗口周报和计划历史。
+
+## 2026-10-30 · 校赛完整版本阶段 6（Task 12–13）
+
+- 状态：DONE；完成固定 7/14 天窗口、身体指标趋势、周报证据字段和计划历史恢复。
+- 周报：`runWeeklyReview` 只读取最近 14 天，proposal 保存真实 `windowStart/windowEnd`、观察摘要和证据质量，不再把整个 mode 历史当作窗口。
+- 身体指标：新增 `BodyMetrics` 页面和 `summarizeBodyMetrics`，记录体重/腰围，显示最近值、变化方向、覆盖率；无数据显示“暂无趋势”。
+- 计划历史：审批记录 `approvedAt/resultPlanVersion`；历史版本恢复通过事务创建新版本并写审计，不覆盖旧记录。
+- 验证：局部 7/7；完整单测 14 files / 51 tests；`npm run typecheck` → PASS；`npm run build` → PASS（既有 bundle warning）；`npm run test:e2e` → 5 场景 PASS。
+- 提交：待本阶段变更审阅后提交，下一阶段进入今日时间线、设置删除/隐私和统一离线错误。

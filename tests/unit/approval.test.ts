@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { applyApprovedProposal, db, repo } from '../../src/db/database'
+import { applyApprovedProposal, db, repo, restorePlanVersion } from '../../src/db/database'
 import { buildDemoDataset } from '../../src/db/seed'
 import { nowIso } from '../../src/shared/utils'
 
@@ -10,4 +10,5 @@ describe('计划审批状态机', () => {
   it('applies once and duplicate click is rejected', async () => { const data = buildDemoDataset(); await repo.putProfile(data.profile); await repo.putPlan(data.plan); const proposal = { id: 'p', mode: 'demo' as const, schemaVersion: 1 as const, createdAt: nowIso(), updatedAt: nowIso(), profileId: data.profile.id, basePlanVersion: 1, status: 'awaiting_approval' as const, windowStart: 'x', windowEnd: 'y', evidenceQuality: 'high' as const, changes: [], rationale: 'x', limitations: [], createdBy: 'agent' as const }; await repo.putProposal(proposal); expect((await applyApprovedProposal('demo', 'p', data.profile.id)).version).toBe(2); await expect(applyApprovedProposal('demo', 'p', data.profile.id)).rejects.toThrow('PROPOSAL_NOT_APPROVABLE') })
 
   it('rejects a proposal belonging to another profile without changing the plan', async () => { const data = buildDemoDataset(); await repo.putProfile(data.profile); await repo.putPlan(data.plan); const proposal = { id: 'cross-profile', mode: 'demo' as const, schemaVersion: 1 as const, createdAt: nowIso(), updatedAt: nowIso(), profileId: 'other-profile', basePlanVersion: 1, status: 'awaiting_approval' as const, windowStart: 'x', windowEnd: 'y', evidenceQuality: 'high' as const, changes: [], rationale: 'x', limitations: [], createdBy: 'agent' as const }; await repo.putProposal(proposal); await expect(applyApprovedProposal('demo', proposal.id, data.profile.id)).rejects.toThrow('PROFILE_SCOPE_MISMATCH'); expect((await repo.getLatestPlan('demo', data.profile.id))?.version).toBe(1) })
+  it('restores a historical version by creating a new version', async () => { const data = buildDemoDataset(); await repo.putProfile(data.profile); await repo.putPlan(data.plan); await repo.putPlan({ ...data.plan, id: 'plan_v2', version: 2, sessions: data.plan.sessions.map((session) => ({ ...session, exercises: session.exercises.map((exercise) => ({ ...exercise, sets: exercise.sets + 1 })) })) }); const restored = await restorePlanVersion('demo', data.profile.id, data.plan.id); expect(restored.version).toBe(3); expect(restored.sessions[1].exercises[0].sets).toBe(data.plan.sessions[1].exercises[0].sets); expect((await repo.listPlans('demo', data.profile.id)).length).toBe(3) })
 })

@@ -82,10 +82,21 @@ export async function applyApprovedProposal(mode: Mode, proposalId: string, prof
     if (proposal.profileId !== profileId) throw new Error('PROFILE_SCOPE_MISMATCH')
     const current = await repo.getLatestPlan(mode, profileId)
     if (!current || current.version !== proposal.basePlanVersion) throw new Error('PLAN_VERSION_CONFLICT')
-    const next: TrainingPlan = { ...current, id: `${current.id}_v${current.version + 1}`, version: current.version + 1, updatedAt: new Date().toISOString(), sessions: current.sessions.map((session, sessionIndex) => ({ ...session, exercises: session.exercises.map((exercise, exerciseIndex) => ({ ...exercise, sets: sessionIndex === 1 && exerciseIndex === 0 && proposal.changes[0]?.field === 'training.sessions[1].exercises[0].sets' ? Number(proposal.changes[0].after) : exercise.sets })) })) }
-    const changed = { ...proposal, status: 'applied' as const, updatedAt: new Date().toISOString() }
-    await db.plans.put(next); await db.proposals.put(changed); await db.audit.put({ id: `audit_${crypto.randomUUID()}`, mode, schemaVersion: 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), action: 'apply_approved_proposal', entityId: proposal.id, summary: `计划 v${current.version} → v${next.version}` })
+    const allowedChanges = proposal.changes.filter((change) => change.field === 'training.sessions[1].exercises[0].sets' && typeof change.after === 'number' && Number.isInteger(change.after) && change.after >= 1 && change.after <= 10)
+    const nextVersion = current.version + 1; const timestamp = new Date().toISOString()
+    const next: TrainingPlan = { ...current, id: `${current.id}_v${nextVersion}`, version: nextVersion, updatedAt: timestamp, sessions: current.sessions.map((session, sessionIndex) => ({ ...session, exercises: session.exercises.map((exercise, exerciseIndex) => { const change = sessionIndex === 1 && exerciseIndex === 0 ? allowedChanges[allowedChanges.length - 1] : undefined; return change ? { ...exercise, sets: Number(change.after) } : exercise }) })) }
+    const changed = { ...proposal, status: 'applied' as const, approvedAt: timestamp, resultPlanVersion: nextVersion, updatedAt: timestamp }
+    await db.plans.put(next); await db.proposals.put(changed); await db.audit.put({ id: `audit_${crypto.randomUUID()}`, mode, schemaVersion: 1, createdAt: timestamp, updatedAt: timestamp, action: 'apply_approved_proposal', entityId: proposal.id, summary: `计划 v${current.version} → v${next.version}` })
     return next
+  })
+}
+
+export async function restorePlanVersion(mode: Mode, profileId: string, planId: string) {
+  return db.transaction('rw', [db.plans, db.audit], async () => {
+    const historical = await db.plans.where('[mode+id]').equals([mode, planId]).first(); if (!historical || historical.profileId !== profileId) throw new Error('PLAN_SCOPE_MISMATCH')
+    const current = await repo.getLatestPlan(mode, profileId); if (!current) throw new Error('PLAN_NOT_FOUND')
+    const timestamp = new Date().toISOString(); const next: TrainingPlan = { ...historical, id: `${historical.id}_restore_v${current.version + 1}`, version: current.version + 1, createdAt: timestamp, updatedAt: timestamp }
+    await db.plans.put(next); await db.audit.put({ id: `audit_${crypto.randomUUID()}`, mode, schemaVersion: 1, createdAt: timestamp, updatedAt: timestamp, action: 'restore_plan_version', entityId: historical.id, summary: `从计划 v${historical.version} 恢复为 v${next.version}` }); return next
   })
 }
 

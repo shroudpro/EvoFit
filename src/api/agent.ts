@@ -1,12 +1,12 @@
 import { analyzeRecordQuality, calculateTrainingCompletion, estimateDailyBalance, sumMealNutrients } from '../domain/calculation'
 import { db, repo } from '../db/database'
-import { createId, nowIso } from '../shared/utils'
+import { createId, nowIso, todayLocalDate } from '../shared/utils'
 import type { AgentRun, Mode, PlanProposal, ToolTrace } from '../shared/types'
 import { generateWeeklyReview, type ReadOnlyToolName } from './modelAdapter'
 
 export async function runWeeklyReview(mode: Mode, profileId: string, modelConsentGranted = false) {
   const profile = await repo.getProfile(mode); const plan = await repo.getLatestPlan(mode, profileId); if (!profile || !plan) throw new Error('PROFILE_OR_PLAN_MISSING')
-  const meals = await repo.listMeals(mode); const exercises = await repo.listExercises(mode); const runId = createId('run'); const traces: ToolTrace[] = []
+  const endDate = todayLocalDate(); const startDate = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10); const meals = (await repo.listMeals(mode)).filter((meal) => meal.localDate >= startDate && meal.localDate <= endDate); const exercises = (await repo.listExercises(mode)).filter((exercise) => exercise.localDate >= startDate && exercise.localDate <= endDate); const runId = createId('run'); const traces: ToolTrace[] = []
   const trace = async (toolName: string, purpose: string, inputSummary: string, outputSummary: string) => { const t: ToolTrace = { ...({ id: createId('trace'), mode, schemaVersion: 1, createdAt: nowIso(), updatedAt: nowIso() }), runId, toolName, purpose, inputSummary, outputSummary, status: 'success', durationMs: 1 }; traces.push(t); return t }
   await trace('get_profile', 'weekly_review', `mode=${mode}`, '成年画像与目标已读取')
   await trace('list_meals', 'weekly_review', '最近 14 天', `${meals.length} 条餐食`)
@@ -28,7 +28,7 @@ export async function runWeeklyReview(mode: Mode, profileId: string, modelConsen
   const modelValue = model.value
   const proposalNeedsMoreData = needsMoreData || modelValue?.evidenceQuality === 'low'
   const safeModelChanges = modelValue?.changes.filter((change) => change.field === 'training.sessions[1].exercises[0].sets' && change.after >= 2 && change.after <= currentSets && change.after !== currentSets).map((change) => ({ ...change, before: currentSets })) ?? fallbackChanges
-  const proposal: PlanProposal = { id: createId('proposal'), mode, schemaVersion: 1, createdAt: nowIso(), updatedAt: nowIso(), profileId, basePlanVersion: plan.version, status: proposalNeedsMoreData ? 'needs_more_data' : 'awaiting_approval', windowStart: '最近 14 天', windowEnd: nowIso().slice(0, 10), evidenceQuality: modelValue?.evidenceQuality ?? evidenceQuality, changes: proposalNeedsMoreData ? [] : safeModelChanges, rationale: proposalNeedsMoreData ? '当前记录覆盖不足，暂不调整计划。' : modelValue?.rationale ?? `记录完整率 ${quality.coveragePercent}%，当前计划版本 ${plan.version}；建议小幅调整训练量并补充缺失记录。`, limitations: modelValue?.limitations ?? ['能量和体重趋势均为估算，不能替代医学建议', '模型未参与关键算术'], createdBy: 'agent' }
+  const proposal: PlanProposal = { id: createId('proposal'), mode, schemaVersion: 1, createdAt: nowIso(), updatedAt: nowIso(), profileId, basePlanVersion: plan.version, status: proposalNeedsMoreData ? 'needs_more_data' : 'awaiting_approval', windowStart: startDate, windowEnd: endDate, evidenceQuality: modelValue?.evidenceQuality ?? evidenceQuality, changes: proposalNeedsMoreData ? [] : safeModelChanges, rationale: proposalNeedsMoreData ? '当前记录覆盖不足，暂不调整计划。' : modelValue?.rationale ?? `记录完整率 ${quality.coveragePercent}%，当前计划版本 ${plan.version}；建议小幅调整训练量并补充缺失记录。`, limitations: modelValue?.limitations ?? ['能量和体重趋势均为估算，不能替代医学建议', '模型未参与关键算术'], observations: [`窗口内餐食 ${meals.length} 条，运动 ${exercises.length} 条`], createdBy: 'agent' }
   const run: AgentRun = { id: runId, mode, schemaVersion: 1, createdAt: nowIso(), updatedAt: nowIso(), profileId, status: proposalNeedsMoreData ? 'needs_more_data' : 'completed', purpose: 'weekly_review', summary: proposal.rationale, toolTraceIds: traces.map((t) => t.id), proposalId: proposal.id }
   await repo.putRun(run); await repo.putProposal(proposal); for (const t of traces) await dbTrace(t)
   return { run, proposal, traces, quality, trainingCompletionPercent, nutrients, balance, modelStatus: model.status, modelMessage: model.message }

@@ -1,0 +1,13 @@
+import { FormEvent, useEffect, useState } from 'react'
+import { repo } from '../db/database'
+import { summarizeBodyMetrics } from '../domain/bodyMetrics'
+import { createId, nowIso, todayLocalDate } from '../shared/utils'
+import { useApp } from '../app/App'
+import type { BodyMetric } from '../shared/types'
+
+export function BodyMetrics() {
+  const { mode } = useApp(); const [metrics, setMetrics] = useState<BodyMetric[]>([]); const [weight, setWeight] = useState(''); const [waist, setWaist] = useState(''); const [note, setNote] = useState(''); const [message, setMessage] = useState('')
+  const load = async () => setMetrics(await repo.listBodyMetrics(mode, 14)); useEffect(() => { void load() }, [mode]); const summary = summarizeBodyMetrics(metrics)
+  const save = async (event: FormEvent) => { event.preventDefault(); const weightKg = Number(weight); if (!Number.isFinite(weightKg) || weightKg < 25 || weightKg > 400) { setMessage('请输入 25–400 kg 的体重。'); return }; const timestamp = nowIso(); await repo.putBodyMetric({ id: createId('body_metric'), mode, schemaVersion: 1, createdAt: timestamp, updatedAt: timestamp, localDate: todayLocalDate(), weightKg, waistCm: waist ? Number(waist) : undefined, source: 'manual', note: note.trim() || undefined }); setWeight(''); setWaist(''); setNote(''); setMessage('身体指标已保存，趋势会按最近 14 天重新计算。'); await load() }
+  return <section className="panel"><div className="panel-head"><div><span className="eyebrow">身体指标</span><h3>记录体重和腰围</h3></div><span className="tag">最近 14 天</span></div><form className="form-grid" onSubmit={save}><label>体重（kg）<input type="number" min="25" max="400" step="0.1" value={weight} onChange={(event) => setWeight(event.target.value)} required /></label><label>腰围（cm，可选）<input type="number" min="20" max="250" step="0.1" value={waist} onChange={(event) => setWaist(event.target.value)} /></label><label className="span-2">备注（可选）<input value={note} onChange={(event) => setNote(event.target.value)} /></label><button className="primary-button span-2" type="submit">保存今天指标</button></form><div className="metric-grid"><div className="metric-card"><div><span className="metric-label">最近体重</span><strong>{summary.latest ? `${summary.latest.weightKg} kg` : '暂无趋势'}</strong><small>{summary.latest?.localDate ?? '先记录一次'}</small></div></div><div className="metric-card"><div><span className="metric-label">14 天变化</span><strong>{summary.deltaKg === null ? '暂无趋势' : `${summary.deltaKg > 0 ? '+' : ''}${summary.deltaKg} kg`}</strong><small>{summary.direction === 'down' ? '下降' : summary.direction === 'up' ? '上升' : summary.direction === 'stable' ? '基本稳定' : '数据不足'} · 覆盖 {summary.coveragePercent}%</small></div></div></div>{message && <div className="inline-status success">{message}</div>}</section>
+}
